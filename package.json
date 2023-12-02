@@ -1,0 +1,25 @@
+{
+  "name": "caffeinec",
+  "displayName": "CaffeineC",
+  "description": "Language support for the CaffeineC programming language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "cffc",
+      "aliases": ["CaffeineC", "cffc"],
+      "extensions": [".cffc"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "cffc",
+      "scopeName": "source.cffc",
+      "path": "./syntaxes/cffc.tmLanguage.json"
+    }]
+  }
+}
