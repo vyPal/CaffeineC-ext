@@ -3,27 +3,246 @@
 	"name": "CaffeineC",
 	"patterns": [
 		{
-			"include": "#keywords"
-		},
-		{
-			"include": "#strings"
+			"include": "#expression"
 		}
 	],
 	"repository": {
-		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.cffc",
-				"match": "\\b(if|while|for|return)\\b"
-			}]
-		},
-		"strings": {
-			"name": "string.quoted.double.cffc",
-			"begin": "\"",
-			"end": "\"",
+		"statement": {
 			"patterns": [
 				{
-					"name": "constant.character.escape.cffc",
-					"match": "\\\\."
+					"include": "#if-statement"
+				},
+				{
+					"include": "#while-statement"
+				},
+				{
+					"include": "#for-statement"
+				},
+				{
+					"include": "#return-statement"
+				},
+				{
+					"include": "#variable-declaration"
+				},
+				{
+					"include": "#variable-assignment"
+				},
+				{
+					"include": "#function-definition"
+				},
+				{
+					"include": "#class-definition"
+				},
+				{
+					"include": "#field-definition"
+				},
+				{
+					"include": "#external-function-definition"
+				},
+				{
+					"include": "#break-statement"
+				},
+				{
+					"include": "#continue-statement"
+				},
+				{
+					"include": "#expression"
+				}
+			]
+		},
+		"if-statement": {
+			"begin": "\\b(if)\\b",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.conditional.if" }
+			},
+			"end": "(?=\\belse\\b|$)",
+			"patterns": [
+				{
+					"include": "#expression"
+				},
+				{
+					"begin": "\\b(else if)\\b",
+					"beginCaptures": {
+						"1": { "name": "keyword.control.conditional.elseif" }
+					},
+					"end": "(?=\\belse\\b|$)",
+					"patterns": [
+						{
+							"include": "#expression"
+						}
+					]
+				},
+				{
+					"match": "\\b(else)\\b",
+					"captures": {
+						"1": { "name": "keyword.control.conditional.else" }
+					}
+				}
+			]
+		},
+		"expression": {
+      "patterns": [
+        {
+          "include": "#comparison"
+        },
+        {
+          "include": "#op-expression"
+        }
+      ]
+    },
+		"op-expression": {
+      "patterns": [
+        {
+          "captures": {
+            "1": { "name": "keyword.operator.arithmetic" }
+          },
+          "match": "\\b(\\+|-)\\b"
+        },
+        {
+          "include": "#expression"
+        }
+      ]
+    },
+    "comparison": {
+      "patterns": [
+        {
+          "include": "#term"
+        },
+        {
+          "captures": {
+            "1": { "name": "keyword.operator.comparison" }
+          },
+          "match": "\\b(==|<=?|>=?|!=)\\b"
+        },
+        {
+          "include": "#op-comparison"
+        }
+      ]
+    },
+    "op-comparison": {
+      "patterns": [
+        {
+          "include": "#term"
+        },
+        {
+          "captures": {
+            "1": { "name": "keyword.operator.comparison" }
+          },
+          "match": "\\b(==|<=?|>=?|!=)\\b"
+        }
+      ]
+    },
+    "term": {
+      "patterns": [
+        {
+          "include": "#factor"
+        },
+        {
+          "include": "#op-term"
+        }
+      ]
+    },
+    "op-term": {
+      "patterns": [
+        {
+          "captures": {
+            "1": { "name": "keyword.operator.arithmetic" }
+          },
+          "match": "\\b(\\*|/|%)\\b"
+        },
+        {
+          "include": "#factor"
+        }
+      ]
+    },
+    "factor": {
+      "patterns": [
+        {
+          "include": "#value"
+        },
+        {
+          "include": "#class-initializer"
+        },
+        {
+          "include": "#sub-expression"
+        },
+        {
+          "include": "#function-call"
+        },
+        {
+          "include": "#class-method"
+        },
+        {
+          "include": "#identifier"
+        }
+      ]
+    },
+    "value": {
+      "patterns": [
+				{
+					"captures": {
+						"1": { "name": "constant.numeric" }
+					},
+					"match": "\\b(\\d+(\\.\\d+)?)\\b"
+				},
+				{
+					"captures": {
+						"1": { "name": "constant.language" }
+					},
+					"match": "\\b(true|false|null)\\b"
+				},
+				{
+					"captures": {
+						"1": { "name": "string.quoted.double" }
+					},
+					"match": "\"(.*?)\""
+				}
+			]
+    },
+		"class-initializer": {
+			"patterns": [
+				{
+					"match": "\\bnew\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+					"captures": {
+						"1": {"name": "entity.name.type.class"}
+					}
+				}
+			]
+		},
+		"sub-expression": {
+			"patterns": [
+				{
+					"begin": "\\(",
+					"end": "\\)",
+					"name": "expression"
+				}
+			]
+		},
+		"function-call": {
+			"patterns": [
+				{
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+					"captures": {
+						"1": {"name": "entity.name.function.meta.function-call"}
+					}
+				}
+			]
+		},
+		"class-method": {
+			"patterns": [
+				{
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+					"captures": {
+						"1": {"name": "entity.name.function.method.meta.method"}
+					}
+				}
+			]
+		},
+		"identifier": {
+			"patterns": [
+				{
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+					"name": "variable"
 				}
 			]
 		}
