@@ -38,11 +38,12 @@ function activate(context) {
     let tokens = [];
     (0, hover_1.registerHover)(context);
     const tokenTypes = ['class', 'function', 'variable', 'parameter', 'property', 'type', 'string', 'number', 'keyword', 'comment', 'regexp', 'operator'];
-    const tokenModifiers = ['decleration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation'];
+    const tokenModifiers = ['decleration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation', 'invocation'];
     const legend = new vscode.SemanticTokensLegend(tokenTypes, tokenModifiers);
     context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider({ language: 'cffc' }, {
         provideDocumentSemanticTokens(document) {
             if (ast != null) {
+                outputChannel.appendLine("Sending tokens: " + tokens);
                 let data = new Uint32Array(tokens);
                 return new vscode.SemanticTokens(data);
             }
@@ -75,35 +76,36 @@ function activate(context) {
                     diagnosticCollection.clear();
                     outputChannel.appendLine("This got called");
                     ast = JSON.parse(stdout);
-                    tokens = processAst(ast);
+                    tokens = processAst(ast, outputChannel);
                 }
             });
         }
     }));
 }
 exports.activate = activate;
-function processAst(ast) {
+function processAst(ast, o) {
     const tokens = [];
     ast["Statements"].forEach((statement) => {
         if (statement.VariableDefinition != null) {
+            o.appendLine(JSON.stringify(statement.VariableDefinition, null, 2));
             // Highlight variable definitions
             const { line, column } = getLineAndColumn(statement.VariableDefinition);
-            tokens.push(line, column, statement.VariableDefinition.Name.length, TokenType.Variable, TokenModifiers.Definition);
+            tokens.push(line, column, statement.VariableDefinition.Name.length, TokenType.variable, TokenModifiers.definition);
         }
         else if (statement.Assignment != null) {
             // Highlight variable assignments
             const { line, column } = getLineAndColumn(statement.Assignment.Left);
-            tokens.push(line, column, statement.Assignment.Left.Name.length, TokenType.Variable, TokenModifiers.Modification);
+            tokens.push(line, column, statement.Assignment.Left.Name.length, TokenType.variable, TokenModifiers.modification);
         }
         else if (statement.FunctionDefinition != null) {
             // Highlight function definitions
             const { line, column } = getLineAndColumn(statement.FunctionDefinition);
-            tokens.push(line, column, statement.FunctionDefinition.Name.length, TokenType.Function, TokenModifiers.Definition);
+            tokens.push(line, column, statement.FunctionDefinition.Name.length, TokenType.function, TokenModifiers.definition);
         }
         else if (statement.Expression != null && statement.Expression.FunctionCall != null) {
             // Highlight function calls
             const { line, column } = getLineAndColumn(statement.Expression.FunctionCall);
-            tokens.push(line, column, statement.Expression.FunctionCall.FunctionName.length, TokenType.Function, TokenModifiers.Invocation);
+            tokens.push(line, column, statement.Expression.FunctionCall.FunctionName.length, TokenType.function, TokenModifiers.invocation);
         }
     });
     return tokens;
@@ -116,13 +118,30 @@ function getLineAndColumn(obj) {
 }
 var TokenType;
 (function (TokenType) {
-    TokenType[TokenType["Variable"] = 0] = "Variable";
-    TokenType[TokenType["Function"] = 1] = "Function";
+    TokenType[TokenType["class"] = 0] = "class";
+    TokenType[TokenType["function"] = 1] = "function";
+    TokenType[TokenType["variable"] = 2] = "variable";
+    TokenType[TokenType["parameter"] = 3] = "parameter";
+    TokenType[TokenType["property"] = 4] = "property";
+    TokenType[TokenType["type"] = 5] = "type";
+    TokenType[TokenType["string"] = 6] = "string";
+    TokenType[TokenType["number"] = 7] = "number";
+    TokenType[TokenType["keyword"] = 8] = "keyword";
+    TokenType[TokenType["comment"] = 9] = "comment";
+    TokenType[TokenType["regexp"] = 10] = "regexp";
+    TokenType[TokenType["operator"] = 11] = "operator";
 })(TokenType || (TokenType = {}));
 var TokenModifiers;
 (function (TokenModifiers) {
-    TokenModifiers[TokenModifiers["Definition"] = 0] = "Definition";
-    TokenModifiers[TokenModifiers["Modification"] = 1] = "Modification";
-    TokenModifiers[TokenModifiers["Invocation"] = 2] = "Invocation";
+    TokenModifiers[TokenModifiers["decleration"] = 0] = "decleration";
+    TokenModifiers[TokenModifiers["definition"] = 1] = "definition";
+    TokenModifiers[TokenModifiers["readonly"] = 2] = "readonly";
+    TokenModifiers[TokenModifiers["static"] = 3] = "static";
+    TokenModifiers[TokenModifiers["deprecated"] = 4] = "deprecated";
+    TokenModifiers[TokenModifiers["abstract"] = 5] = "abstract";
+    TokenModifiers[TokenModifiers["async"] = 6] = "async";
+    TokenModifiers[TokenModifiers["modification"] = 7] = "modification";
+    TokenModifiers[TokenModifiers["documentation"] = 8] = "documentation";
+    TokenModifiers[TokenModifiers["invocation"] = 9] = "invocation";
 })(TokenModifiers || (TokenModifiers = {}));
 //# sourceMappingURL=extension.js.map

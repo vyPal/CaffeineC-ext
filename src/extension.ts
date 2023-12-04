@@ -13,11 +13,12 @@ export function activate(context: vscode.ExtensionContext) {
   registerHover(context);
 
   const tokenTypes = ['class', 'function', 'variable', 'parameter', 'property', 'type', 'string', 'number', 'keyword', 'comment', 'regexp', 'operator'];
-  const tokenModifiers = ['decleration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation'];
+  const tokenModifiers = ['decleration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation', 'invocation'];
   const legend = new vscode.SemanticTokensLegend(tokenTypes, tokenModifiers);
   context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider({ language: 'cffc' }, {
     provideDocumentSemanticTokens(document: vscode.TextDocument): vscode.ProviderResult<vscode.SemanticTokens> {
       if (ast != null) {
+        outputChannel.appendLine("Sending tokens: "+tokens);
         let data = new Uint32Array(tokens);
         return new vscode.SemanticTokens(data);
       }
@@ -54,32 +55,33 @@ export function activate(context: vscode.ExtensionContext) {
             diagnosticCollection.clear();
             outputChannel.appendLine("This got called");
             ast = JSON.parse(stdout);
-            tokens = processAst(ast);
+            tokens = processAst(ast, outputChannel);
           }
       });
     }
   }));
 }
 
-function processAst(ast: any): number[] {
+function processAst(ast: any, o: vscode.OutputChannel): number[] {
   const tokens: number[] = [];
   ast["Statements"].forEach((statement: any) => {
     if (statement.VariableDefinition != null) {
+      o.appendLine(JSON.stringify(statement.VariableDefinition, null, 2))
       // Highlight variable definitions
       const { line, column } = getLineAndColumn(statement.VariableDefinition);
-      tokens.push(line, column, statement.VariableDefinition.Name.length, TokenType.Variable, TokenModifiers.Definition);
+      tokens.push(line, column, statement.VariableDefinition.Name.length, TokenType.variable, TokenModifiers.definition);
     } else if (statement.Assignment != null) {
       // Highlight variable assignments
       const { line, column } = getLineAndColumn(statement.Assignment.Left);
-      tokens.push(line, column, statement.Assignment.Left.Name.length, TokenType.Variable, TokenModifiers.Modification);
+      tokens.push(line, column, statement.Assignment.Left.Name.length, TokenType.variable, TokenModifiers.modification);
     } else if (statement.FunctionDefinition != null) {
       // Highlight function definitions
       const { line, column } = getLineAndColumn(statement.FunctionDefinition);
-      tokens.push(line, column, statement.FunctionDefinition.Name.length, TokenType.Function, TokenModifiers.Definition);
+      tokens.push(line, column, statement.FunctionDefinition.Name.length, TokenType.function, TokenModifiers.definition);
     } else if (statement.Expression != null && statement.Expression.FunctionCall != null) {
       // Highlight function calls
       const { line, column } = getLineAndColumn(statement.Expression.FunctionCall);
-      tokens.push(line, column, statement.Expression.FunctionCall.FunctionName.length, TokenType.Function, TokenModifiers.Invocation);
+      tokens.push(line, column, statement.Expression.FunctionCall.FunctionName.length, TokenType.function, TokenModifiers.invocation);
     }
   });
   return tokens;
@@ -93,12 +95,29 @@ function getLineAndColumn(obj: any): { line: number, column: number } {
 }
 
 enum TokenType {
-  Variable = 0,
-  Function = 1,
+  class = 0,
+  function = 1,
+  variable = 2,
+  parameter = 3,
+  property = 4,
+  type = 5,
+  string = 6,
+  number = 7,
+  keyword = 8,
+  comment = 9,
+  regexp = 10,
+  operator = 11,
 }
 
 enum TokenModifiers {
-  Definition = 0,
-  Modification = 1,
-  Invocation = 2,
+  decleration = 0,
+  definition = 1,
+  readonly = 2,
+  static = 3,
+  deprecated = 4,
+  abstract = 5,
+  async = 6,
+  modification = 7,
+  documentation = 8,
+  invocation = 9,
 }

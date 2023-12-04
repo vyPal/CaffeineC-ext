@@ -1,17 +1,22 @@
 {
-  "name": "caffeinec",
+  "name": "caffeinec-ext",
   "displayName": "CaffeineC",
   "description": "Language support for the CaffeineC programming language",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.84.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vyPal/CaffeineC-ext.git"
+  },
+  "publisher": "vyPal",
   "main": "./out/extension.js",
   "categories": [
     "Programming Languages"
   ],
   "scripts": {
-    "vscode:prepublish": "<%= pkgManager %> run compile",
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
   },
