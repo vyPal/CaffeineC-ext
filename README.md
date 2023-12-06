@@ -9,8 +9,7 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Requirements
 
-- CaffeineC compiler installed on system
-- LLVM installed on system
+Basically none
 
 ## Known Issues
 
@@ -20,6 +19,9 @@ None ig?
 
 ### 0.0.3
 - Update README
+- Start work on lsp in go
+- Basic implementation of go lsp in extension
+- Disabled use of CaffeineC command by extension
 
 ### 0.0.2
 - Added more types to the hover provider
