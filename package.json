@@ -6,6 +6,7 @@
   "engines": {
     "vscode": "^1.84.0"
   },
+  "type": "commonjs",
   "repository": {
     "type": "git",
     "url": "https://github.com/vyPal/CaffeineC-ext.git"
@@ -16,10 +17,10 @@
     "Programming Languages"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
-  },
+    "vscode:prepublish": "npm run build",
+    "build": "esbuild src/extension.ts --bundle --platform=node --target=node14 --format=cjs --outfile=out/extension.js --external:vscode",
+    "watch": "esbuild src/extension.ts --bundle --platform=node --target=node14 --format=cjs --outfile=out/extension.js --watch --external:vscode"
+  },  
   "contributes": {
     "languages": [
       {
@@ -42,6 +43,11 @@
       }
     ]
   },
+  "configurationDefaults": {
+    "cffc": {
+      "editor.semanticHighlighting.enabled": true
+    }
+  },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.10.2",
@@ -50,7 +56,15 @@
     "@typescript-eslint/parser": "^6.13.1",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.8",
+    "esbuild": "^0.19.8",
     "eslint": "^8.55.0",
     "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "esm": "^3.2.25",
+    "get-port": "^7.0.0",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
   }
 }
