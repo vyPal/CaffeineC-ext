@@ -8,11 +8,13 @@ import (
 
 type Bool struct {
 	Value bool
+	Str   string
 	Pos   lexer.Position
 }
 
 func (b *Bool) Capture(values []string) error {
 	b.Value = values[0] == "true"
+	b.Str = values[0]
 	return nil
 }
 
@@ -228,11 +230,12 @@ type FunctionName struct {
 
 type FunctionDefinition struct {
 	Pos        lexer.Position
-	Private    *KWPrivate            `parser:"@@"`
-	Static     *KWStatic             `parser:"@@"`
-	Name       *FunctionName         `parser:"@@Ident"`
+	Private    *KWPrivate            `parser:"( @@'private' )?"`
+	Static     *KWStatic             `parser:"( @@'static' )?"`
+	KWFunc     *KWFunc               `parser:"@@"`
+	Name       *FunctionName         `parser:"@@"`
 	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')'"`
-	ReturnType string                `parser:"( ':' @Ident )?"`
+	ReturnType *ReturnType           `parser:"( ':' @@ )?"`
 	Body       []*Statement          `parser:"'{' @@* '}'"`
 }
 
@@ -242,9 +245,10 @@ type KWClass struct {
 }
 
 type ClassDefinition struct {
-	Pos  lexer.Position
-	Name *ClassName   `parser:"@@Ident"`
-	Body []*Statement `parser:"'{' @@* '}'"`
+	Pos     lexer.Position
+	KWClass *KWClass     `parser:"@@"`
+	Name    *ClassName   `parser:"@@Ident"`
+	Body    []*Statement `parser:"'{' @@* '}'"`
 }
 
 type ClassMethod struct {
