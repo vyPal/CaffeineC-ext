@@ -17,7 +17,7 @@
     "Programming Languages"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run build",
+    "vscode:prepublish": "npm run build -- --minify",
     "build": "esbuild src/extension.ts --bundle --platform=node --target=node14 --format=cjs --outfile=out/extension.js --external:vscode",
     "watch": "esbuild src/extension.ts --bundle --platform=node --target=node14 --format=cjs --outfile=out/extension.js --watch --external:vscode"
   },  
