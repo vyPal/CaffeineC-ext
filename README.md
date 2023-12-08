@@ -21,6 +21,7 @@ This extension adds support for the CaffeineC programming language in vscode.
 ### 0.0.4
 - Add support for more of the CaffeineC syntax
 - Functioning lsp written in go
+- Add lsp building on client
 
 ### 0.0.3
 - Update README
