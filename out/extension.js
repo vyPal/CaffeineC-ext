@@ -3107,7 +3107,7 @@ var require_main = __commonJS({
     var ril_1 = require_ril();
     ril_1.default.install();
     var path = require("path");
-    var os2 = require("os");
+    var os3 = require("os");
     var crypto_1 = require("crypto");
     var net_1 = require("net");
     var api_1 = require_api();
@@ -3244,7 +3244,7 @@ var require_main = __commonJS({
       if (XDG_RUNTIME_DIR) {
         result = path.join(XDG_RUNTIME_DIR, `vscode-ipc-${randomSuffix}.sock`);
       } else {
-        result = path.join(os2.tmpdir(), `vscode-${randomSuffix}.sock`);
+        result = path.join(os3.tmpdir(), `vscode-${randomSuffix}.sock`);
       }
       const limit = safeIpcPathLengths.get(process.platform);
       if (limit !== void 0 && result.length > limit) {
@@ -18094,7 +18094,7 @@ var require_main4 = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SettingMonitor = exports.LanguageClient = exports.TransportKind = void 0;
     var cp = require("child_process");
-    var fs = require("fs");
+    var fs2 = require("fs");
     var path = require("path");
     var vscode_1 = require("vscode");
     var Is = require_is();
@@ -18519,13 +18519,13 @@ var require_main4 = __commonJS({
         const mainRootPath = this._mainGetRootPath();
         if (mainRootPath !== void 0) {
           const result = path.join(mainRootPath, runtime);
-          if (fs.existsSync(result)) {
+          if (fs2.existsSync(result)) {
             return result;
           }
         }
         if (serverWorkingDirectory !== void 0) {
           const result = path.join(serverWorkingDirectory, runtime);
-          if (fs.existsSync(result)) {
+          if (fs2.existsSync(result)) {
             return result;
           }
         }
@@ -18549,7 +18549,7 @@ var require_main4 = __commonJS({
         }
         if (cwd) {
           return new Promise((s) => {
-            fs.lstat(cwd, (err, stats) => {
+            fs2.lstat(cwd, (err, stats) => {
               s(!err && stats.isDirectory() ? cwd : void 0);
             });
           });
@@ -18735,6 +18735,8 @@ var vscode2 = __toESM(require("vscode"));
 var import_node = __toESM(require_node3());
 var net2 = __toESM(require("net"));
 var child_process = __toESM(require("child_process"));
+var os2 = __toESM(require("os"));
+var fs = __toESM(require("fs"));
 
 // node_modules/get-port/index.js
 var import_node_net = __toESM(require("net"), 1);
@@ -18850,16 +18852,40 @@ async function getPorts(options) {
 }
 
 // src/lsp.ts
-async function registerLSP(context) {
+async function registerLSP(context, outputChannel) {
   const port = await getPorts();
+  let binary_ready = false;
   let serverOptions = async () => {
-    const serverProcess = child_process.spawn(context.asAbsolutePath("./lsp/lsp"), [`--port=${port}`], { env: process.env });
+    let binaryPath = context.asAbsolutePath("./lsp/lsp");
+    let lspPath = context.asAbsolutePath("./lsp");
+    switch (os2.platform()) {
+      case "win32":
+        binaryPath += ".exe";
+        break;
+      case "darwin":
+        binaryPath += "-mac";
+        break;
+    }
+    if (!fs.existsSync(binaryPath)) {
+      await new Promise((resolve, reject) => {
+        child_process.exec("cd " + lspPath + " && go build -o " + binaryPath + " .", (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Failed to build server: ${error}`);
+            reject(error);
+            return;
+          }
+          outputChannel.appendLine(`Server build output: ${stdout}`);
+          resolve();
+        });
+      });
+    }
+    const serverProcess = child_process.spawn(binaryPath, [`--port=${port}`], { env: process.env });
     return new Promise((resolve, reject) => {
       serverProcess.stderr.on("data", (data) => {
         console.error(`Server error: ${data}`);
       });
       serverProcess.stdout.on("data", (data) => {
-        console.log(`Server: ${data}`);
+        outputChannel.appendLine(`Server: ${data}`);
       });
       serverProcess.on("exit", (code, signal) => {
         console.log(`Server exited with code ${code} and signal ${signal}`);
@@ -18892,10 +18918,9 @@ async function registerLSP(context) {
 
 // src/extension.ts
 async function activate(context) {
-  const diagnosticCollection = vscode3.languages.createDiagnosticCollection("cffc");
   const outputChannel = vscode3.window.createOutputChannel("CaffeineC");
   registerHover(context);
-  await registerLSP(context);
+  await registerLSP(context, outputChannel);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

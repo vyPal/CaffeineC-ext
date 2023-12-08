@@ -143,7 +143,14 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 			analyzeStatement(s, tokens)
 		}
 	} else if stmt.For != nil {
-
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.For.KWFor.Pos.Line) - 1, uint(stmt.For.KWFor.Pos.Column) - 1, 3, 19, 0}...)
+	} else if stmt.Expression != nil {
+		analyzeExpression(stmt.Expression, tokens)
+	} else if stmt.While != nil {
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.While.KWWhile.Pos.Line) - 1, uint(stmt.While.KWWhile.Pos.Column) - 1, 5, 19, 0}...)
+		for _, s := range stmt.While.Body {
+			analyzeStatement(s, tokens)
+		}
 	}
 }
 
@@ -195,11 +202,15 @@ func analyzeFactor(fact *Factor, tokens *lsp.SemanticTokens) {
 	} else if fact.SubExpression != nil {
 		analyzeExpression(fact.SubExpression, tokens)
 	} else if fact.FunctionCall != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(fact.FunctionCall.Pos.Line) - 1, uint(fact.FunctionCall.Pos.Column) - 1, uint(len(fact.FunctionCall.FunctionName)), 8, 0}...)
-		// TODO: Add parameters
+		tokens.Data = append(tokens.Data, []uint{uint(fact.FunctionCall.Pos.Line) - 1, uint(fact.FunctionCall.Pos.Column) - 1, uint(len(fact.FunctionCall.FunctionName)), 13, 0}...)
+		for _, e := range fact.FunctionCall.Args.Arguments {
+			analyzeExpression(e, tokens)
+		}
 	} else if fact.ClassMethod != nil {
 		analyzeIdentifier(fact.ClassMethod.Identifier, tokens)
-		// TODO: Add params/args
+		for _, e := range fact.ClassMethod.Args.Arguments {
+			analyzeExpression(e, tokens)
+		}
 	}
 }
 

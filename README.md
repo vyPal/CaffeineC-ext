@@ -9,13 +9,18 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Requirements
 
-Basically none
+- Golang (tested with `1.21.3`)
 
 ## Known Issues
 
-None ig?
+- Syntax highlighting is not complete
+- Sometimes file turns white
 
 ## Release Notes
+
+### 0.0.4
+- Add support for more of the CaffeineC syntax
+- Functioning lsp written in go
 
 ### 0.0.3
 - Update README
