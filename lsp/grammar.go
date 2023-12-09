@@ -291,11 +291,11 @@ type KWFor struct {
 
 type For struct {
 	Pos         lexer.Position
-	KWFor       *KWFor              `parser:"@@"`
-	Initializer *VariableDefinition `parser:"'(' @@ ';'"`
-	Condition   *Expression         `parser:"@@ ';'"`
-	Increment   *Assignment         `parser:"@@ ')'"`
-	Body        []*Statement        `parser:"'{' @@* '}'"`
+	KWFor       *KWFor       `parser:"@@"`
+	Initializer *Statement   `parser:"'(' @@"`
+	Condition   *Expression  `parser:"@@ ';'"`
+	Increment   *Statement   `parser:"@@ ')'"`
+	Body        []*Statement `parser:"'{' @@* '}'"`
 }
 
 type KWWhile struct {
@@ -348,9 +348,9 @@ type ExternalFunctionDefinition struct {
 
 type Statement struct {
 	Pos                lexer.Position
-	VariableDefinition *VariableDefinition         `parser:"(?= 'var' Ident) @@? ';'"`
-	Assignment         *Assignment                 `parser:"| (?= Ident '=') @@? ';'"`
-	ExternalFunction   *ExternalFunctionDefinition `parser:"| (?= 'extern' 'func') @@? ';'"`
+	VariableDefinition *VariableDefinition         `parser:"(?= 'var' Ident) @@? (';' | '\\n')?"`
+	Assignment         *Assignment                 `parser:"| (?= Ident '=') @@? (';' | '\\n')?"`
+	ExternalFunction   *ExternalFunctionDefinition `parser:"| (?= 'extern' 'func') @@? (';' | '\\n')?"`
 	FunctionDefinition *FunctionDefinition         `parser:"| (?= 'private'? 'static'? 'func') @@?"`
 	ClassDefinition    *ClassDefinition            `parser:"| (?= 'class') @@?"`
 	If                 *If                         `parser:"| (?= 'if') @@?"`
@@ -358,8 +358,8 @@ type Statement struct {
 	While              *While                      `parser:"| (?= 'while') @@?"`
 	Return             *Return                     `parser:"| (?= 'return') @@?"`
 	FieldDefinition    *FieldDefinition            `parser:"| (?= 'private'? Ident ':' Ident) @@?"`
-	Break              *bool                       `parser:"| @'break'? ';'"`
-	Continue           *bool                       `parser:"| @'continue'? ';'"`
+	Break              *string                     `parser:"| 'break' (';' | '\\n')?"`
+	Continue           *string                     `parser:"| 'continue' (';' | '\\n')?"`
 	Expression         *Expression                 `parser:"| @@"`
 }
 

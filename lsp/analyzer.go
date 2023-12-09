@@ -104,6 +104,10 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.KWExtern.Pos.Line) - 1, uint(stmt.ExternalFunction.KWExtern.Pos.Column) - 1, 7, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.KWFunc.Pos.Line) - 1, uint(stmt.ExternalFunction.KWFunc.Pos.Column) - 1, 4, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.Name.Pos.Line) - 1, uint(stmt.ExternalFunction.Name.Pos.Column) - 1, uint(len(stmt.ExternalFunction.Name.Name)), 13, 0b10}...)
+		for _, p := range stmt.ExternalFunction.Parameters {
+			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
+			tokens.Data = append(tokens.Data, []uint{uint(p.Type.Pos.Line) - 1, uint(p.Type.Pos.Column) - 1, uint(len(p.Type.Type)), 5, 0}...)
+		}
 		if stmt.ExternalFunction.ReturnType != nil {
 			tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.ReturnType.Pos.Line) - 1, uint(stmt.ExternalFunction.ReturnType.Pos.Column) - 1, uint(len(stmt.ExternalFunction.ReturnType.Type)), 5, 0}...)
 		}
@@ -116,6 +120,10 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 		}
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.KWFunc.Pos.Line) - 1, uint(stmt.FunctionDefinition.KWFunc.Pos.Column) - 1, 4, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.Name.Pos.Line) - 1, uint(stmt.FunctionDefinition.Name.Pos.Column) - 1, uint(len(stmt.FunctionDefinition.Name.Name)), 13, 0b10}...)
+		for _, p := range stmt.FunctionDefinition.Parameters {
+			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
+			tokens.Data = append(tokens.Data, []uint{uint(p.Type.Pos.Line) - 1, uint(p.Type.Pos.Column) - 1, uint(len(p.Type.Type)), 5, 0}...)
+		}
 		if stmt.FunctionDefinition.ReturnType != nil {
 			tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.ReturnType.Pos.Line) - 1, uint(stmt.FunctionDefinition.ReturnType.Pos.Column) - 1, uint(len(stmt.FunctionDefinition.ReturnType.Type)), 5, 0}...)
 		}
@@ -144,6 +152,18 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 		}
 	} else if stmt.For != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.For.KWFor.Pos.Line) - 1, uint(stmt.For.KWFor.Pos.Column) - 1, 3, 19, 0}...)
+		if stmt.For.Initializer != nil {
+			analyzeStatement(stmt.For.Initializer, tokens)
+		}
+		if stmt.For.Condition != nil {
+			analyzeExpression(stmt.For.Condition, tokens)
+		}
+		if stmt.For.Increment != nil {
+			analyzeStatement(stmt.For.Increment, tokens)
+		}
+		for _, s := range stmt.For.Body {
+			analyzeStatement(s, tokens)
+		}
 	} else if stmt.Expression != nil {
 		analyzeExpression(stmt.Expression, tokens)
 	} else if stmt.While != nil {
@@ -151,6 +171,16 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 		for _, s := range stmt.While.Body {
 			analyzeStatement(s, tokens)
 		}
+	} else if stmt.Return != nil {
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.Return.KWReturn.Pos.Line) - 1, uint(stmt.Return.KWReturn.Pos.Column) - 1, 6, 19, 0}...)
+		analyzeExpression(stmt.Return.Expression, tokens)
+	} else if stmt.Break != nil {
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.Pos.Line) - 1, uint(stmt.Pos.Column) - 1, 5, 19, 0}...)
+	} else if stmt.Continue != nil {
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.Pos.Line) - 1, uint(stmt.Pos.Column) - 1, 8, 19, 0}...)
+	} else if stmt.FieldDefinition != nil {
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Name.Pos.Line) - 1, uint(stmt.FieldDefinition.Name.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Name.Name)), 8, 0b10}...)
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Type.Pos.Line) - 1, uint(stmt.FieldDefinition.Type.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Type.Type)), 5, 0}...)
 	}
 }
 

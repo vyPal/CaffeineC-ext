@@ -1,4 +1,4 @@
 node_modules
 *.vsix
-lsp/lsp
 out/
+built-lsp/**
