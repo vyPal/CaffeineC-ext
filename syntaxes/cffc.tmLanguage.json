@@ -1,13 +1,79 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "CaffeineC",
-	"patterns": [
+	"scopeName": "source.cffc",
+  "patterns": [
+    {
+      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false)\\b",
+      "name": "keyword.control.cffc"
+    },
+    {
+      "match": "\\b([0-9]+(\\.[0-9]+)?)\\b",
+      "name": "constant.numeric.cffc"
+    },
+    {
+      "match": "\"[^\"]*\"",
+      "name": "string.quoted.double.cffc"
+    },
+    {
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+      "name": "identifier.cffc"
+    },
+    {
+      "match": "(\\*|/|%|=|<|>|!|\\+|-)",
+      "name": "operator.cffc"
+    },
+    {
+      "match": "\\b(h|m|s|ms|us|ns)\\b",
+      "name": "keyword.time.cffc"
+    },
 		{
-			"include": "#expression"
+			"match": "\\b(as)\\b",
+			"name": "keyword.as.cffc"
+		},
+		{
+			"match": "\\b(static)\\b",
+			"name": "keyword.static.cffc"
+		},
+		{
+			"match": "\\b(else)\\b",
+			"name": "keyword.else.cffc"
+		},
+		{
+			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*\\(.*\\)\\s*\\{.*\\})\\b",
+			"name": "function.definition.cffc"
+		},
+		{
+			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*:\\s*[a-zA-Z_][a-zA-Z0-9_]*)\\b",
+			"name": "variable.definition.cffc"
+		},
+		{
+			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[a-zA-Z_][a-zA-Z0-9_]*)\\b",
+			"name": "assignment.cffc"
+		},
+		{
+			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*\\.\\s*[a-zA-Z_][a-zA-Z0-9_]*)\\b",
+			"name": "class.method.cffc"
+		},
+		{
+			"match": "\\b(new\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\(.*\\)\\s*;)\\b",
+			"name": "class.initializer.cffc"
+		},
+		{
+			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*:\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*;)\\b",
+			"name": "field.definition.cffc"
+		},
+		{
+			"match": "\\b(import\\s*\"[^\"]*\"\\s*;)\\b",
+			"name": "import.cffc"
+		},
+		{
+			"match": "\\b(from\\s*\"[^\"]*\"\\s*import\\s*\\{.*\\}\\s*;)\\b",
+			"name": "from.import.multiple.cffc"
+		},
+		{
+			"match": "\\b(from\\s*\"[^\"]*\"\\s*import\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*;)\\b",
+			"name": "from.import.cffc"
 		}
-	],
-	"repository": {
-		
-	},
-	"scopeName": "source.cffc"
+  ]
 }

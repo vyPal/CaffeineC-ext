@@ -67,7 +67,7 @@ type ClassName struct {
 type ClassInitializer struct {
 	Pos       lexer.Position
 	New       *KWNew       `parser:"@@"`
-	ClassName *ClassName   `parser:"@@Ident"`
+	ClassName *ClassName   `parser:"@@"`
 	Args      ArgumentList `parser:"'(' @@ ')' ';'"`
 }
 
@@ -149,11 +149,6 @@ type KWVar struct {
 	Dummy bool `parser:"'var'"`
 }
 
-type Colon struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"':'"`
-}
-
 type VariableName struct {
 	Name string `parser:"@Ident"`
 	Pos  lexer.Position
@@ -167,8 +162,7 @@ type VariableType struct {
 type VariableDefinition struct {
 	Pos        lexer.Position
 	Var        *KWVar        `parser:"@@"`
-	Name       *VariableName `parser:"@@"`
-	Colon      *Colon        `parser:"@@"`
+	Name       *VariableName `parser:"@@ ':'"`
 	Type       *VariableType `parser:"@@"`
 	Assignment *Expression   `parser:"( '=' @@ )?"`
 }
@@ -190,10 +184,9 @@ type FieldType struct {
 
 type FieldDefinition struct {
 	Pos     lexer.Position
-	Private *KWPrivate `parser:"@@"`
+	Private *KWPrivate `parser:"@@?"`
 	Name    *FieldName `parser:"@@"`
-	Colon   *Colon     `parser:"@@"`
-	Type    *FieldType `parser:"@@Ident ';'"`
+	Type    *FieldType `parser:"':' @@ ';'"`
 }
 
 type ArgumentName struct {
@@ -207,10 +200,9 @@ type ArgumentType struct {
 }
 
 type ArgumentDefinition struct {
-	Pos   lexer.Position
-	Name  *ArgumentName `parser:"@@"`
-	Colon *Colon        `parser:"@@"`
-	Type  *ArgumentType `parser:"@@"`
+	Pos  lexer.Position
+	Name *ArgumentName `parser:"@@ ':'"`
+	Type *ArgumentType `parser:"@@"`
 }
 
 type KWStatic struct {
@@ -247,7 +239,7 @@ type KWClass struct {
 type ClassDefinition struct {
 	Pos     lexer.Position
 	KWClass *KWClass     `parser:"@@"`
-	Name    *ClassName   `parser:"@@Ident"`
+	Name    *ClassName   `parser:"@@"`
 	Body    []*Statement `parser:"'{' @@* '}'"`
 }
 
@@ -341,8 +333,7 @@ type ExternalFunctionDefinition struct {
 	KWExtern   *KWExtern             `parser:"@@"`
 	KWFunc     *KWFunc               `parser:"@@"`
 	Name       *ExternalFunctionName `parser:"@@"`
-	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')'"`
-	Colon      *Colon                `parser:"@@"`
+	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')' ':'"`
 	ReturnType *ReturnType           `parser:"@@"`
 }
 

@@ -107,7 +107,12 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			return
 		}
 		var err error
-		ast, err = parser.Parse("", strings.NewReader(params.ContentChanges[0].Text))
+		if e := TryCatch(func() {
+			ast, err = parser.Parse("", strings.NewReader(params.ContentChanges[0].Text))
+		})(); e != nil {
+			DecodeError(e.Error(), conn, params.TextDocument.URI, ctx)
+			return
+		}
 		if err != nil {
 			DecodeError(err.Error(), conn, params.TextDocument.URI, ctx)
 			return
@@ -122,21 +127,24 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 	case "textDocument/didOpen":
 		params := &lsp.DidOpenTextDocumentParams{}
 		if err := json.Unmarshal(*req.Params, params); err != nil {
+			conn.Notify(ctx, "textDocument/publishDiagnostics", lsp.PublishDiagnosticsParams{
+				URI: params.TextDocument.URI, Diagnostics: []lsp.Diagnostic{},
+			})
+		}
+		var err error
+		if e := TryCatch(func() {
+			ast, err = parser.Parse("", strings.NewReader(params.TextDocument.Text))
+		})(); e != nil {
+			DecodeError(e.Error(), conn, params.TextDocument.URI, ctx)
+			return
+		}
+		if err != nil {
 			DecodeError(err.Error(), conn, params.TextDocument.URI, ctx)
 			return
 		} else {
 			conn.Notify(ctx, "textDocument/publishDiagnostics", lsp.PublishDiagnosticsParams{
 				URI: params.TextDocument.URI, Diagnostics: []lsp.Diagnostic{},
 			})
-		}
-		var err error
-		ast, err = parser.Parse("", strings.NewReader(params.TextDocument.Text))
-		if err != nil {
-			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-				Type:    lsp.MTError,
-				Message: err.Error(),
-			})
-			return
 		}
 
 		conn.Reply(ctx, req.ID, nil)

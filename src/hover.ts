@@ -180,16 +180,6 @@ export function registerHover(context: vscode.ExtensionContext) {
         // --------------------------------------------------
         // Pointers
         // --------------------------------------------------
-
-        case 'ptr':
-          return new vscode.Hover(
-            '**`ptr`**\n\n' +
-            'The `ptr` type represents a pointer to a value of any type.\n\n' +
-            'Example of `ptr` declaration:\n\n' +
-            '```cffc\n' +
-            'var a: ptr = 0;\n' +
-            '```'
-          );
         
         case '*i8':
           return new vscode.Hover(
@@ -279,6 +269,7 @@ export function registerHover(context: vscode.ExtensionContext) {
           return new vscode.Hover(
             '**`void`**\n\n' +
             'The `void` type represents an empty type.\n\n' +
+            'It should only be used as a return type.\n\n' +
             'Example of `void` declaration:\n\n' +
             '```cffc\n' +
             'var a: void = 0;\n' +
@@ -289,6 +280,7 @@ export function registerHover(context: vscode.ExtensionContext) {
           return new vscode.Hover(
             '**`bool`**\n\n' +
             'The `bool` type represents a boolean value.\n\n' +
+            'In CaffeineC, `bool` is internally represented as a `i1`.\n\n' +
             'Example of `bool` declaration:\n\n' +
             '```cffc\n' +
             'var a: bool = true;\n' +

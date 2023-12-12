@@ -74,6 +74,10 @@ func AnalyzeAst(ast *Program, conn *jsonrpc2.Conn, ctx context.Context, req *jso
 		Data: []uint{},
 	}
 
+	if ast == nil {
+		return
+	}
+
 	for _, stmt := range ast.Statements {
 		if TryCatch(func() {
 			analyzeStatement(stmt, &tokens)
