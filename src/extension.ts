@@ -6,5 +6,5 @@ export async function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel('CaffeineC');
 
   registerHover(context);
-  //await registerLSP(context, outputChannel);
+  await registerLSP(context, outputChannel);
 }

@@ -2,11 +2,190 @@
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "CaffeineC",
 	"scopeName": "source.cffc",
+	"repository": {
+		"expression": {
+			"patterns": [
+				{
+					"include": "#comparison"
+				}
+			]
+		},
+		"comparison": {
+			"patterns": [
+				{
+					"include": "#term"
+				},
+				{
+					"match": "(==|<=|<|>=|>|!=)",
+					"name": "keyword.operator.comparison.cffc"
+				}
+			]
+		},
+		"term": {
+			"patterns": [
+				{
+					"include": "#factor"
+				},
+				{
+					"match": "(\\*|/|%)",
+					"name": "keyword.operator.term.cffc"
+				}
+			]
+		},
+		"factor": {
+			"patterns": [
+				{
+					"include": "#value"
+				},
+				{
+					"match": "\\bnew\\b",
+					"name": "keyword.control.new.cffc"
+				},
+				{
+					"match": "\\(",
+					"name": "punctuation.section.parens.begin.cffc"
+				},
+				{
+					"match": "\\)",
+					"name": "punctuation.section.parens.end.cffc"
+				},
+				{
+					"include": "#functionCall"
+				},
+				{
+					"include": "#classMethod"
+				},
+				{
+					"include": "#identifier"
+				}
+			]
+		},
+		"value": {
+			"patterns": [
+				{
+					"match": "\\b[0-9]+(\\.[0-9]+)?\\b",
+					"name": "constant.numeric.cffc"
+				},
+				{
+					"match": "\\btrue\\b",
+					"name": "constant.language.boolean.true.cffc"
+				},
+				{
+					"match": "\\bfalse\\b",
+					"name": "constant.language.boolean.false.cffc"
+				},
+				{
+					"match": "\"[^\"]*\"",
+					"name": "string.quoted.double.cffc"
+				},
+				{
+					"match": "\\b[0-9]+(h|m|s|ms|us|ns)\\b",
+					"name": "constant.numeric.time.cffc"
+				}
+			]
+		},
+		"functionCall": {
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\s*\\(.*\\)\\s*",
+			"name": "entity.name.function.call.cffc"
+		},
+		"classMethod": {
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\s*\\(.*\\)\\s*",
+			"name": "entity.name.function.method.cffc"
+		},
+		"identifier": {
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b",
+			"name": "entity.name.variable.cffc"
+		},
+		"arguments": {
+			"patterns": [
+				{
+					"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\:\\s*(\\*?[a-zA-Z_][a-zA-Z0-9_]*)",
+					"captures": {
+						"1": { "name": "variable.parameter.function.cffc" },
+						"2": { "name": "entity.name.type.cffc" }
+					}
+				}
+			]
+		},
+		"string": {
+			"match": "[^\"]*",
+			"name": "string.quoted.double.cffc"
+		},
+		"imported-items": {
+			"match": "[a-zA-Z_][a-zA-Z0-9_]*\\s*(as\\s*[a-zA-Z_][a-zA-Z0-9_]*)?(,\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*(as\\s*[a-zA-Z_][a-zA-Z0-9_]*)?)*",
+			"name": "entity.name.import.cffc"
+		}
+	},
   "patterns": [
-    {
-      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false)\\b",
-      "name": "keyword.control.cffc"
-    },
+		{
+			"match": "\\b(var)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(:)\\s*(\\*?[a-zA-Z_][a-zA-Z0-9_]*)(\\s*(=)\\s*([^;]+))?\\s*(;)",
+			"captures": {
+				"1": { "name": "keyword.control.cffc" },
+				"2": { "name": "entity.name.variable.cffc" },
+				"3": { "name": "keyword.operator.cffc" },
+				"4": { "name": "entity.name.type.cffc" },
+				"6": { "name": "keyword.operator.cffc" },
+				"7": { "patterns": [ { "include": "#expression" } ] },
+				"8": { "name": "punctuation.terminator.cffc" }
+			}
+		},
+		{
+			"begin": "\\b((private\\s+static|private|static|export|extern)?\\s*func)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+			"end": "\\)\\s*(\\:)?\\s*(\\*?[a-zA-Z_][a-zA-Z0-9_]*)?\\s*(\\{|;)",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.function.cffc" },
+				"2": { "name": "keyword.control.modifier.cffc" },
+				"3": { "name": "entity.name.function.cffc" }
+			},
+			"endCaptures": {
+				"2": { "name": "entity.name.type.cffc" },
+				"3": { "name": "punctuation.section.block.begin.cffc" }
+			},
+			"patterns": [
+				{ "include": "#arguments" }
+			]
+		},
+		{
+			"begin": "\\b(import)\\s*(\")",
+			"end": "(\"\\s*;)\\b",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.import.cffc" }
+			},
+			"endCaptures": {
+				"1": { "name": "punctuation.terminator.statement.cffc" }
+			},
+			"patterns": [
+				{ "include": "#string" }
+			]
+		},
+		{
+			"begin": "\\b(from)\\s*(\")",
+			"end": "(\"\\s*import\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*;)\\b",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.import.from.cffc" }
+			},
+			"endCaptures": {
+				"1": { "name": "entity.name.import.cffc" },
+				"2": { "name": "punctuation.terminator.statement.cffc" }
+			},
+			"patterns": [
+				{ "include": "#string" }
+			]
+		},
+		{
+			"begin": "\\b(from)\\s*(\")",
+			"end": "(\"\\s*import\\s*\\{)\\b",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.import.from.cffc" }
+			},
+			"endCaptures": {
+				"1": { "name": "keyword.control.import.brace.cffc" }
+			},
+			"patterns": [
+				{ "include": "#string" },
+				{ "include": "#imported-items" }
+			]
+		},
     {
       "match": "\\b([0-9]+(\\.[0-9]+)?)\\b",
       "name": "constant.numeric.cffc"
@@ -15,11 +194,7 @@
       "match": "\"[^\"]*\"",
       "name": "string.quoted.double.cffc"
     },
-    {
-      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b",
-      "name": "identifier.cffc"
-    },
-    {
+		{
       "match": "(\\*|/|%|=|<|>|!|\\+|-)",
       "name": "operator.cffc"
     },
@@ -40,14 +215,6 @@
 			"name": "keyword.else.cffc"
 		},
 		{
-			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*\\(.*\\)\\s*\\{.*\\})\\b",
-			"name": "function.definition.cffc"
-		},
-		{
-			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*:\\s*[a-zA-Z_][a-zA-Z0-9_]*)\\b",
-			"name": "variable.definition.cffc"
-		},
-		{
 			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[a-zA-Z_][a-zA-Z0-9_]*)\\b",
 			"name": "assignment.cffc"
 		},
@@ -64,16 +231,12 @@
 			"name": "field.definition.cffc"
 		},
 		{
-			"match": "\\b(import\\s*\"[^\"]*\"\\s*;)\\b",
-			"name": "import.cffc"
-		},
+      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false)\\b",
+      "name": "keyword.control.cffc"
+    },
 		{
-			"match": "\\b(from\\s*\"[^\"]*\"\\s*import\\s*\\{.*\\}\\s*;)\\b",
-			"name": "from.import.multiple.cffc"
-		},
-		{
-			"match": "\\b(from\\s*\"[^\"]*\"\\s*import\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*;)\\b",
-			"name": "from.import.cffc"
-		}
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+      "name": "identifier.cffc"
+    }
   ]
 }
