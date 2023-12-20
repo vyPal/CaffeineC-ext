@@ -1,4 +1,6 @@
 # Change Log
+## 1.0.0
+- Add install and update commands
 
 ## 0.0.8
 - Start working on tmLanguge for syntax highlighting

@@ -2,7 +2,7 @@
   "name": "caffeinec-ext",
   "displayName": "CaffeineC",
   "description": "Language support for the CaffeineC programming language",
-  "version": "0.0.8",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -41,7 +41,32 @@
         "scopeName": "source.cffc",
         "path": "./syntaxes/cffc.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "caffeinec.install",
+        "title": "Install CaffeineC compiler",
+        "enablement": "caffeinec.compiler_not_installed",
+        "category": "CaffeineC"
+      },
+      {
+        "command": "caffeinec.update",
+        "title": "Update CaffeineC compiler",
+        "category": "CaffeineC"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "caffeinec.install",
+          "when": "editorLangId == cffc"
+        },
+        {
+          "command": "caffeinec.update",
+          "when": "editorLangId == cffc"
+        }
+      ]
+    }
   },
   "configurationDefaults": {
     "cffc": {

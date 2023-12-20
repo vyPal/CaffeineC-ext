@@ -18,5 +18,5 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 0.0.8
-- Start working on tmLanguge for syntax highlighting
+### 1.0.0
+- Added install and update commands
