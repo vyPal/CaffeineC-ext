@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -26,6 +27,83 @@ func DecodeError(stderr string, conn *jsonrpc2.Conn, uri lsp.DocumentURI, ctx co
 	diagnostic := lsp.Diagnostic{Range: rang, Message: message, Severity: lsp.Error, Source: "CaffeineC Parser"}
 
 	conn.Notify(ctx, "textDocument/publishDiagnostics", lsp.PublishDiagnosticsParams{URI: uri, Diagnostics: []lsp.Diagnostic{diagnostic}})
+}
+
+type Server struct {
+	documents map[string]string
+	conn      *jsonrpc2.Conn
+}
+
+func (s *Server) DidChange(ctx context.Context, params lsp.DocumentURI, text string) error {
+	// Update the document in the server's state.
+	s.documents[string(params)] = text
+	return nil
+}
+
+type MdHover struct {
+	Contents interface{} `json:"contents"`
+	Range    *Range      `json:"range,omitempty"`
+}
+
+type Range struct {
+	Start Position `json:"start"`
+	End   Position `json:"end"`
+}
+
+type Position struct {
+	Line      int `json:"line"`
+	Character int `json:"character"`
+}
+
+type MarkupContent struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
+func (s *Server) Hover(ctx context.Context, params HoverParams) (*MdHover, error) {
+	// Get the current state of the document.
+	doc := s.documents[string(params.TextDocument.URI)]
+
+	// Get the line and character position of the hover.
+	line := params.Position.Line
+	character := params.Position.Character
+
+	// Get the text being hovered over.
+	// This is a simple example and may not work correctly for all cases.
+	lines := strings.Split(doc, "\n")
+	if line < len(lines) {
+		text := lines[line]
+		if character < len(text) {
+			// Match word characters around the given position.
+			re := regexp.MustCompile(`[\w*-]+`)
+			matches := re.FindAllStringIndex(text, -1)
+			for _, match := range matches {
+				if match[0] <= character && character <= match[1] {
+					hoveredText := text[match[0]:match[1]]
+					if symbol, ok := SymbolTable[hoveredText]; ok {
+						if symbol.Type == "variable" {
+							return &MdHover{
+								Contents: MarkupContent{
+									Kind:  "markdown",
+									Value: fmt.Sprintf("```cffc\n%s: %s\n```", symbol.Name, symbol.Data["type"]),
+								},
+							}, nil
+						} else if symbol.Type == "parameter" {
+							return &MdHover{
+								Contents: MarkupContent{
+									Kind:  "markdown",
+									Value: fmt.Sprintf("**Name:** %s\n\n**Type:** %s", symbol.Name, symbol.Data["type"]),
+								},
+							}, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Return the hover information.
+	return &MdHover{}, nil
 }
 
 func AnalyzeAst(ast *Program, conn *jsonrpc2.Conn, ctx context.Context, req *jsonrpc2.Request) {
@@ -93,11 +171,16 @@ func AnalyzeAst(ast *Program, conn *jsonrpc2.Conn, ctx context.Context, req *jso
 
 func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 	if stmt.VariableDefinition != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.VariableDefinition.Pos.Line) - 1, uint(stmt.VariableDefinition.Pos.Column) - 1, 3, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.VariableDefinition.Name.Pos.Line) - 1, uint(stmt.VariableDefinition.Name.Pos.Column) - 1, uint(len(stmt.VariableDefinition.Name.Name)), 8, 0b10}...)
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.VariableDefinition.Type.Pos.Line) - 1, uint(stmt.VariableDefinition.Type.Pos.Column) - 1, uint(len(stmt.VariableDefinition.Type.Type)), 5, 0}...)
 		if stmt.VariableDefinition.Assignment != nil {
 			analyzeExpression(stmt.VariableDefinition.Assignment, tokens)
+		}
+		SymbolTable[stmt.VariableDefinition.Name.Name] = CTSymbol{
+			Name: stmt.VariableDefinition.Name.Name,
+			Type: "variable",
+			Data: map[string]string{
+				"type": stmt.VariableDefinition.Type.Type,
+			},
 		}
 	} else if stmt.Assignment != nil {
 		analyzeIdentifier(stmt.Assignment.Left, tokens)
@@ -105,43 +188,38 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 			analyzeExpression(stmt.Assignment.Right, tokens)
 		}
 	} else if stmt.ExternalFunction != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.KWExtern.Pos.Line) - 1, uint(stmt.ExternalFunction.KWExtern.Pos.Column) - 1, 7, 19, 0}...)
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.KWFunc.Pos.Line) - 1, uint(stmt.ExternalFunction.KWFunc.Pos.Column) - 1, 4, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.Name.Pos.Line) - 1, uint(stmt.ExternalFunction.Name.Pos.Column) - 1, uint(len(stmt.ExternalFunction.Name.Name)), 13, 0b10}...)
 		for _, p := range stmt.ExternalFunction.Parameters {
 			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
-			tokens.Data = append(tokens.Data, []uint{uint(p.Type.Pos.Line) - 1, uint(p.Type.Pos.Column) - 1, uint(len(p.Type.Type)), 5, 0}...)
-		}
-		if stmt.ExternalFunction.ReturnType != nil {
-			tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.ReturnType.Pos.Line) - 1, uint(stmt.ExternalFunction.ReturnType.Pos.Column) - 1, uint(len(stmt.ExternalFunction.ReturnType.Type)), 5, 0}...)
+			SymbolTable[p.Name.Name] = CTSymbol{
+				Name: p.Name.Name,
+				Type: "parameter",
+				Data: map[string]string{
+					"type": p.Type.Type,
+				},
+			}
 		}
 	} else if stmt.FunctionDefinition != nil {
-		if stmt.FunctionDefinition.Private != nil {
-			tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.Private.Pos.Line) - 1, uint(stmt.FunctionDefinition.Private.Pos.Column) - 1, 7, 19, 0}...)
-		}
-		if stmt.FunctionDefinition.Static != nil {
-			tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.Static.Pos.Line) - 1, uint(stmt.FunctionDefinition.Static.Pos.Column) - 1, 6, 19, 0}...)
-		}
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.KWFunc.Pos.Line) - 1, uint(stmt.FunctionDefinition.KWFunc.Pos.Column) - 1, 4, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.Name.Pos.Line) - 1, uint(stmt.FunctionDefinition.Name.Pos.Column) - 1, uint(len(stmt.FunctionDefinition.Name.Name)), 13, 0b10}...)
 		for _, p := range stmt.FunctionDefinition.Parameters {
 			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
-			tokens.Data = append(tokens.Data, []uint{uint(p.Type.Pos.Line) - 1, uint(p.Type.Pos.Column) - 1, uint(len(p.Type.Type)), 5, 0}...)
-		}
-		if stmt.FunctionDefinition.ReturnType != nil {
-			tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.ReturnType.Pos.Line) - 1, uint(stmt.FunctionDefinition.ReturnType.Pos.Column) - 1, uint(len(stmt.FunctionDefinition.ReturnType.Type)), 5, 0}...)
+			SymbolTable[p.Name.Name] = CTSymbol{
+				Name: p.Name.Name,
+				Type: "parameter",
+				Data: map[string]string{
+					"type": p.Type.Type,
+				},
+			}
 		}
 		for _, s := range stmt.FunctionDefinition.Body {
 			analyzeStatement(s, tokens)
 		}
 	} else if stmt.ClassDefinition != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.ClassDefinition.KWClass.Pos.Line) - 1, uint(stmt.ClassDefinition.KWClass.Pos.Column) - 1, 5, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.ClassDefinition.Name.Pos.Line) - 1, uint(stmt.ClassDefinition.Name.Pos.Column) - 1, uint(len(stmt.ClassDefinition.Name.Name)), 1, 0b1}...)
 		for _, s := range stmt.ClassDefinition.Body {
 			analyzeStatement(s, tokens)
 		}
 	} else if stmt.If != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.If.KWIf.Pos.Line) - 1, uint(stmt.If.KWIf.Pos.Column) - 1, 2, 19, 0}...)
 		analyzeExpression(stmt.If.Condition, tokens)
 		for _, s := range stmt.If.Body {
 			analyzeStatement(s, tokens)
@@ -185,6 +263,8 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 	} else if stmt.FieldDefinition != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Name.Pos.Line) - 1, uint(stmt.FieldDefinition.Name.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Name.Name)), 8, 0b10}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Type.Pos.Line) - 1, uint(stmt.FieldDefinition.Type.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Type.Type)), 5, 0}...)
+	} else if stmt.Export != nil {
+		analyzeStatement(stmt.Export, tokens)
 	}
 }
 

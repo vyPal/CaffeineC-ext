@@ -19,6 +19,21 @@ var parser *participle.Parser[Program]
 
 var ast *Program
 
+var server *Server
+
+var SymbolTable = make(map[string]CTSymbol)
+
+type CTSymbol struct {
+	Name string
+	Type string
+	Data map[string]string
+}
+
+type HoverParams struct {
+	Position     lsp.Position               `json:"position"`
+	TextDocument lsp.TextDocumentIdentifier `json:"textDocument"`
+}
+
 func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	switch req.Method {
 	case "initialize":
@@ -32,6 +47,7 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		}
 
 		parser = participle.MustBuild[Program]()
+		server = &Server{conn: conn, documents: make(map[string]string)}
 
 		res := &lsp.InitializeResult{
 			Capabilities: lsp.ServerCapabilities{
@@ -44,6 +60,7 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 				CompletionProvider: &lsp.CompletionOptions{
 					TriggerCharacters: []string{"."},
 				},
+				HoverProvider: true,
 				SemanticTokensProvider: &lsp.SemanticTokensOptions{
 					Legend: lsp.SemanticTokensLegend{
 						TokenTypes: []string{
@@ -122,6 +139,8 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			})
 		}
 
+		server.DidChange(ctx, params.TextDocument.URI, params.ContentChanges[0].Text)
+
 		conn.Reply(ctx, req.ID, nil)
 
 	case "textDocument/didOpen":
@@ -147,6 +166,8 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			})
 		}
 
+		server.DidChange(ctx, params.TextDocument.URI, params.TextDocument.Text)
+
 		conn.Reply(ctx, req.ID, nil)
 
 	case "textDocument/semanticTokens/full":
@@ -160,6 +181,27 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		}
 
 		AnalyzeAst(ast, conn, ctx, req)
+
+	case "textDocument/hover":
+		params := &HoverParams{}
+		if err := json.Unmarshal(*req.Params, params); err != nil {
+			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
+				Type:    lsp.MTError,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		hover, err := server.Hover(ctx, *params)
+		if err != nil {
+			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
+				Type:    lsp.MTError,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		conn.Reply(ctx, req.ID, hover)
 
 	/*
 		case "textDocument/completion":

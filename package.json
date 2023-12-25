@@ -32,6 +32,10 @@
         "extensions": [
           ".cffc"
         ],
+        "icon": {
+          "dark": "./icons/cffc_dark.png",
+          "light": "./icons/cffc_dark.png"
+        },
         "configuration": "./language-configuration.json"
       }
     ],

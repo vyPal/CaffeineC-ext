@@ -85,8 +85,10 @@ export async function registerLSP(context: vscode.ExtensionContext, outputChanne
       });
 
       serverProcess.stdout.on('data', (data) => {
-        outputChannel.appendLine(`Server: ${data}`);
+        let stringData = data.toString('utf8');
+        outputChannel.appendLine(`Server: ${stringData}`);
       });
+    
 
       serverProcess.on('exit', (code, signal) => {
         console.log(`Server exited with code ${code} and signal ${signal}`);
