@@ -1,4 +1,8 @@
 # Change Log
+### 1.0.1
+- Improved lsp, syntax highlighting
+- Icons
+
 ## 1.0.0
 - Add install and update commands
 

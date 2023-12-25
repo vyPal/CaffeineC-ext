@@ -18,5 +18,6 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.0
-- Added install and update commands
+### 1.0.1
+- Improved lsp, syntax highlighting
+- Icons
