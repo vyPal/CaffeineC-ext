@@ -47,7 +47,7 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		}
 
 		parser = participle.MustBuild[Program]()
-		server = &Server{conn: conn, documents: make(map[string]string)}
+		server = &Server{conn: conn, documents: make(map[string]string), asts: make(map[string]*Program)}
 
 		res := &lsp.InitializeResult{
 			Capabilities: lsp.ServerCapabilities{
@@ -139,7 +139,7 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			})
 		}
 
-		server.DidChange(ctx, params.TextDocument.URI, params.ContentChanges[0].Text)
+		server.DidChange(conn, ctx, params.TextDocument.URI, params.ContentChanges[0].Text)
 
 		conn.Reply(ctx, req.ID, nil)
 
@@ -150,23 +150,7 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 				URI: params.TextDocument.URI, Diagnostics: []lsp.Diagnostic{},
 			})
 		}
-		var err error
-		if e := TryCatch(func() {
-			ast, err = parser.Parse("", strings.NewReader(params.TextDocument.Text))
-		})(); e != nil {
-			DecodeError(e.Error(), conn, params.TextDocument.URI, ctx)
-			return
-		}
-		if err != nil {
-			DecodeError(err.Error(), conn, params.TextDocument.URI, ctx)
-			return
-		} else {
-			conn.Notify(ctx, "textDocument/publishDiagnostics", lsp.PublishDiagnosticsParams{
-				URI: params.TextDocument.URI, Diagnostics: []lsp.Diagnostic{},
-			})
-		}
-
-		server.DidChange(ctx, params.TextDocument.URI, params.TextDocument.Text)
+		server.DidChange(conn, ctx, params.TextDocument.URI, params.TextDocument.Text)
 
 		conn.Reply(ctx, req.ID, nil)
 
@@ -180,7 +164,7 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			return
 		}
 
-		AnalyzeAst(ast, conn, ctx, req)
+		server.AnalyzeAst(ctx, req, params.TextDocument.URI)
 
 	case "textDocument/hover":
 		params := &HoverParams{}

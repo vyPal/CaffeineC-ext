@@ -1,4 +1,10 @@
 # Change Log
+### 1.0.2
+- Add dynamic hovers for functions and variables
+- Add run button to vscode
+- Finish update and install commands
+- Support for v2.0.21 grammar
+
 ### 1.0.1
 - Improved lsp, syntax highlighting
 - Icons

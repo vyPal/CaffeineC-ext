@@ -6,9 +6,14 @@ import * as https from 'https';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { registerCommands } from './commands';
+import { activateProjects } from './projects.js';
 
 export async function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel('CaffeineC');
+  if (context.extensionMode === vscode.ExtensionMode.Development) {
+    outputChannel.show();
+  }
 
   child_process.exec('CaffeineC --version', (error, stdout, stderr) => {
     if (error) {
@@ -93,6 +98,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   registerHover(context, outputChannel);
   await registerLSP(context, outputChannel);
-
-
+  registerCommands(context);
+  activateProjects(context, outputChannel);
 }

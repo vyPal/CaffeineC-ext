@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"strconv"
@@ -31,12 +34,29 @@ func DecodeError(stderr string, conn *jsonrpc2.Conn, uri lsp.DocumentURI, ctx co
 
 type Server struct {
 	documents map[string]string
+	asts      map[string]*Program
 	conn      *jsonrpc2.Conn
 }
 
-func (s *Server) DidChange(ctx context.Context, params lsp.DocumentURI, text string) error {
+func (s *Server) DidChange(conn *jsonrpc2.Conn, ctx context.Context, params lsp.DocumentURI, text string) error {
 	// Update the document in the server's state.
 	s.documents[string(params)] = text
+	var err error
+	if e := TryCatch(func() {
+		ast, err = parser.Parse("", strings.NewReader(text))
+	})(); e != nil {
+		DecodeError(e.Error(), conn, params, ctx)
+		return nil
+	}
+	if err != nil {
+		DecodeError(err.Error(), conn, params, ctx)
+		return nil
+	} else {
+		conn.Notify(ctx, "textDocument/publishDiagnostics", lsp.PublishDiagnosticsParams{
+			URI: params, Diagnostics: []lsp.Diagnostic{},
+		})
+	}
+	s.asts[string(params)] = ast
 	return nil
 }
 
@@ -75,7 +95,7 @@ func (s *Server) Hover(ctx context.Context, params HoverParams) (*MdHover, error
 		text := lines[line]
 		if character < len(text) {
 			// Match word characters around the given position.
-			re := regexp.MustCompile(`[\w*-]+`)
+			re := regexp.MustCompile(`[\w*]+`)
 			matches := re.FindAllStringIndex(text, -1)
 			for _, match := range matches {
 				if match[0] <= character && character <= match[1] {
@@ -84,15 +104,56 @@ func (s *Server) Hover(ctx context.Context, params HoverParams) (*MdHover, error
 						if symbol.Type == "variable" {
 							return &MdHover{
 								Contents: MarkupContent{
-									Kind:  "markdown",
-									Value: fmt.Sprintf("```cffc\n%s: %s\n```", symbol.Name, symbol.Data["type"]),
+									Kind: "markdown",
+									Value: fmt.Sprintf(
+										"### Variable Information\n\n"+
+											"**Name:** `%s`\n\n"+
+											"**Type:** `%s`\n\n"+
+											"### Variable Definition\n\n"+
+											"```cffc\n%s\n```\n"+
+											"---\n"+
+											"[Go to variable definition](%s)",
+										symbol.Name,
+										symbol.Data["type"],
+										symbol.Data["VDefinition"],
+										symbol.Data["VLocation"],
+									),
 								},
 							}, nil
 						} else if symbol.Type == "parameter" {
 							return &MdHover{
 								Contents: MarkupContent{
-									Kind:  "markdown",
-									Value: fmt.Sprintf("**Name:** %s\n\n**Type:** %s", symbol.Name, symbol.Data["type"]),
+									Kind: "markdown",
+									Value: fmt.Sprintf(
+										"### Parameter Information\n\n"+
+											"**Name:** `%s`\n\n"+
+											"**Type:** `%s`\n\n"+
+											"### Function Definition\n\n"+
+											"```cffc\n%s\n```\n"+
+											"---\n"+
+											"[Go to function definition](%s)",
+										symbol.Name,
+										symbol.Data["type"],
+										symbol.Data["FDefinition"],
+										symbol.Data["FLocation"],
+									),
+								},
+							}, nil
+						} else if symbol.Type == "function" {
+							return &MdHover{
+								Contents: MarkupContent{
+									Kind: "markdown",
+									Value: fmt.Sprintf(
+										"### Function Information\n\n"+
+											"**Name:** `%s`\n\n"+
+											"### Function Definition\n\n"+
+											"```cffc\n%s\n```\n"+
+											"---\n"+
+											"[Go to function definition](%s)",
+										symbol.Name,
+										symbol.Data["definition"],
+										symbol.Data["location"],
+									),
 								},
 							}, nil
 						}
@@ -106,7 +167,7 @@ func (s *Server) Hover(ctx context.Context, params HoverParams) (*MdHover, error
 	return &MdHover{}, nil
 }
 
-func AnalyzeAst(ast *Program, conn *jsonrpc2.Conn, ctx context.Context, req *jsonrpc2.Request) {
+func (s *Server) AnalyzeAst(ctx context.Context, req *jsonrpc2.Request, uri lsp.DocumentURI) {
 	/*
 		legend := lsp.SemanticTokensLegend{
 						TokenTypes: []string{
@@ -152,13 +213,15 @@ func AnalyzeAst(ast *Program, conn *jsonrpc2.Conn, ctx context.Context, req *jso
 		Data: []uint{},
 	}
 
-	if ast == nil {
+	a := s.asts[string(uri)]
+
+	if a == nil {
 		return
 	}
 
-	for _, stmt := range ast.Statements {
+	for _, stmt := range a.Statements {
 		if TryCatch(func() {
-			analyzeStatement(stmt, &tokens)
+			analyzeStatement(stmt, &tokens, uri)
 		})() != nil {
 			continue
 		}
@@ -166,10 +229,10 @@ func AnalyzeAst(ast *Program, conn *jsonrpc2.Conn, ctx context.Context, req *jso
 
 	tokens.Data = ConvertToRelativePositions(tokens.Data)
 
-	conn.Reply(ctx, req.ID, tokens)
+	s.conn.Reply(ctx, req.ID, tokens)
 }
 
-func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
+func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.DocumentURI) {
 	if stmt.VariableDefinition != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.VariableDefinition.Name.Pos.Line) - 1, uint(stmt.VariableDefinition.Name.Pos.Column) - 1, uint(len(stmt.VariableDefinition.Name.Name)), 8, 0b10}...)
 		if stmt.VariableDefinition.Assignment != nil {
@@ -179,7 +242,9 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 			Name: stmt.VariableDefinition.Name.Name,
 			Type: "variable",
 			Data: map[string]string{
-				"type": stmt.VariableDefinition.Type.Type,
+				"type":        stmt.VariableDefinition.Type.Type,
+				"VLocation":   fmt.Sprintf("%s#L%d", uri, stmt.VariableDefinition.Name.Pos.Line),
+				"VDefinition": "var " + stmt.VariableDefinition.Name.Name + ": " + stmt.VariableDefinition.Type.Type,
 			},
 		}
 	} else if stmt.Assignment != nil {
@@ -187,15 +252,40 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 		if stmt.Assignment.Right != nil {
 			analyzeExpression(stmt.Assignment.Right, tokens)
 		}
-	} else if stmt.ExternalFunction != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.ExternalFunction.Name.Pos.Line) - 1, uint(stmt.ExternalFunction.Name.Pos.Column) - 1, uint(len(stmt.ExternalFunction.Name.Name)), 13, 0b10}...)
-		for _, p := range stmt.ExternalFunction.Parameters {
-			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
-			SymbolTable[p.Name.Name] = CTSymbol{
-				Name: p.Name.Name,
-				Type: "parameter",
+	} else if stmt.External != nil {
+		if stmt.External.Function != nil {
+			tokens.Data = append(tokens.Data, []uint{uint(stmt.External.Function.Name.Pos.Line) - 1, uint(stmt.External.Function.Name.Pos.Column) - 1, uint(len(stmt.External.Function.Name.Name)), 13, 0b10}...)
+			for _, p := range stmt.External.Function.Parameters {
+				tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
+				SymbolTable[p.Name.Name] = CTSymbol{
+					Name: p.Name.Name,
+					Type: "parameter",
+					Data: map[string]string{
+						"type":      p.Type.Type,
+						"FName":     stmt.External.Function.Name.Name,
+						"FLocation": fmt.Sprintf("%s#L%d", uri, stmt.External.Function.Name.Pos.Line),
+						"FDefinition": "extern func " + stmt.External.Function.Name.Name + "(" + strings.Join(func() []string {
+							var s []string
+							for _, p := range stmt.External.Function.Parameters {
+								s = append(s, p.Name.Name+": "+p.Type.Type)
+							}
+							return s
+						}(), ", ") + ")",
+					},
+				}
+			}
+			SymbolTable[stmt.External.Function.Name.Name] = CTSymbol{
+				Name: stmt.External.Function.Name.Name,
+				Type: "function",
 				Data: map[string]string{
-					"type": p.Type.Type,
+					"location": fmt.Sprintf("%s#L%d", uri, stmt.External.Function.Name.Pos.Line),
+					"definition": "extern func " + stmt.External.Function.Name.Name + "(" + strings.Join(func() []string {
+						var s []string
+						for _, p := range stmt.External.Function.Parameters {
+							s = append(s, p.Name.Name+": "+p.Type.Type)
+						}
+						return s
+					}(), ", ") + ")",
 				},
 			}
 		}
@@ -207,51 +297,132 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 				Name: p.Name.Name,
 				Type: "parameter",
 				Data: map[string]string{
-					"type": p.Type.Type,
+					"type":      p.Type.Type,
+					"FName":     stmt.FunctionDefinition.Name.Name,
+					"FLocation": fmt.Sprintf("%s#L%d", uri, stmt.FunctionDefinition.Name.Pos.Line),
+					"FDefinition": "func " + stmt.FunctionDefinition.Name.Name + "(" + strings.Join(func() []string {
+						var s []string
+						for _, p := range stmt.FunctionDefinition.Parameters {
+							s = append(s, p.Name.Name+": "+p.Type.Type)
+						}
+						return s
+					}(), ", ") + ")",
 				},
 			}
 		}
+		SymbolTable[stmt.FunctionDefinition.Name.Name] = CTSymbol{
+			Name: stmt.FunctionDefinition.Name.Name,
+			Type: "function",
+			Data: map[string]string{
+				"location": fmt.Sprintf("%s#L%d", uri, stmt.FunctionDefinition.Name.Pos.Line),
+				"definition": "func " + stmt.FunctionDefinition.Name.Name + "(" + strings.Join(func() []string {
+					var s []string
+					for _, p := range stmt.FunctionDefinition.Parameters {
+						s = append(s, p.Name.Name+": "+p.Type.Type)
+					}
+					return s
+				}(), ", ") + ")",
+			},
+		}
 		for _, s := range stmt.FunctionDefinition.Body {
-			analyzeStatement(s, tokens)
+			analyzeStatement(s, tokens, uri)
 		}
 	} else if stmt.ClassDefinition != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.ClassDefinition.Name.Pos.Line) - 1, uint(stmt.ClassDefinition.Name.Pos.Column) - 1, uint(len(stmt.ClassDefinition.Name.Name)), 1, 0b1}...)
 		for _, s := range stmt.ClassDefinition.Body {
-			analyzeStatement(s, tokens)
+			analyzeStatement(s, tokens, uri)
 		}
 	} else if stmt.If != nil {
 		analyzeExpression(stmt.If.Condition, tokens)
 		for _, s := range stmt.If.Body {
-			analyzeStatement(s, tokens)
+			analyzeStatement(s, tokens, uri)
 		}
 		for _, e := range stmt.If.ElseIf {
 			tokens.Data = append(tokens.Data, []uint{uint(e.KWElse.Pos.Line) - 1, uint(e.KWElse.Pos.Column) - 1, 4, 19, 0}...)
 			tokens.Data = append(tokens.Data, []uint{uint(e.KWIf.Pos.Line) - 1, uint(e.KWIf.Pos.Column) - 1, 2, 19, 0}...)
 			analyzeExpression(e.Condition, tokens)
 		}
-		for _, s := range stmt.If.Else {
-			analyzeStatement(s, tokens)
+		for _, s := range stmt.If.Else.Body {
+			analyzeStatement(s, tokens, uri)
 		}
 	} else if stmt.For != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.For.KWFor.Pos.Line) - 1, uint(stmt.For.KWFor.Pos.Column) - 1, 3, 19, 0}...)
 		if stmt.For.Initializer != nil {
-			analyzeStatement(stmt.For.Initializer, tokens)
+			analyzeStatement(stmt.For.Initializer, tokens, uri)
 		}
 		if stmt.For.Condition != nil {
 			analyzeExpression(stmt.For.Condition, tokens)
 		}
 		if stmt.For.Increment != nil {
-			analyzeStatement(stmt.For.Increment, tokens)
+			analyzeStatement(stmt.For.Increment, tokens, uri)
 		}
 		for _, s := range stmt.For.Body {
-			analyzeStatement(s, tokens)
+			analyzeStatement(s, tokens, uri)
 		}
 	} else if stmt.Expression != nil {
 		analyzeExpression(stmt.Expression, tokens)
 	} else if stmt.While != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.While.KWWhile.Pos.Line) - 1, uint(stmt.While.KWWhile.Pos.Column) - 1, 5, 19, 0}...)
 		for _, s := range stmt.While.Body {
-			analyzeStatement(s, tokens)
+			analyzeStatement(s, tokens, uri)
+		}
+	} else if stmt.Import != nil {
+		uri, err := url.Parse(string(uri))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		// Get the directory of the current file.
+		dir := filepath.Dir(uri.Path)
+
+		// Resolve the path of the imported file.
+		importPath := filepath.Join(dir, strings.Trim(stmt.Import.Package, "\""))
+
+		// Read the file contents.
+		content, err := os.ReadFile(importPath)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("Adding file in SymbolTable: " + importPath)
+
+		// Parse the file.
+		var importedAst *Program
+		if e := TryCatch(func() {
+			importedAst, err = parser.Parse("", strings.NewReader(string(content)))
+		})(); e != nil {
+			return
+		}
+		if err != nil {
+			return
+		}
+
+		// Loop through all the statements in the AST.
+		for _, importedStmt := range importedAst.Statements {
+			// If the statement is an export statement, add it to the SymbolTable.
+			if importedStmt.Export != nil {
+				var symbol CTSymbol
+				// Check if the export statement has a function.
+				if importedStmt.Export.FunctionDefinition != nil {
+					symbol = CTSymbol{
+						Name: importedStmt.Export.FunctionDefinition.Name.Name,
+						Type: "function",
+						Data: map[string]string{
+							"location": fmt.Sprintf("%s#L%d", importPath, importedStmt.Export.FunctionDefinition.Name.Pos.Line),
+							"definition": "func " + importedStmt.Export.FunctionDefinition.Name.Name + "(" + strings.Join(func() []string {
+								var s []string
+								for _, p := range importedStmt.Export.FunctionDefinition.Parameters {
+									s = append(s, p.Name.Name+": "+p.Type.Type)
+								}
+								return s
+							}(), ", ") + ")",
+						},
+					}
+				}
+				SymbolTable[symbol.Name] = symbol
+			}
 		}
 	} else if stmt.Return != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.Return.KWReturn.Pos.Line) - 1, uint(stmt.Return.KWReturn.Pos.Column) - 1, 6, 19, 0}...)
@@ -264,7 +435,7 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens) {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Name.Pos.Line) - 1, uint(stmt.FieldDefinition.Name.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Name.Name)), 8, 0b10}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Type.Pos.Line) - 1, uint(stmt.FieldDefinition.Type.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Type.Type)), 5, 0}...)
 	} else if stmt.Export != nil {
-		analyzeStatement(stmt.Export, tokens)
+		analyzeStatement(stmt.Export, tokens, uri)
 	}
 }
 

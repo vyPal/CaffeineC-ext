@@ -2,7 +2,7 @@
   "name": "caffeinec-ext",
   "displayName": "CaffeineC",
   "description": "Language support for the CaffeineC programming language",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -57,6 +57,20 @@
         "command": "caffeinec.update",
         "title": "Update CaffeineC compiler",
         "category": "CaffeineC"
+      },
+      {
+        "command": "caffeinec.build",
+        "title": "Build CaffeineC project",
+        "when": "editorLangId == cffc",
+        "icon": "$(gear)",
+        "category": "CaffeineC"
+      },
+      {
+        "command": "caffeinec.run",
+        "title": "Run CaffeineC project",
+        "when": "editorLangId == cffc",
+        "icon": "$(run)",
+        "category": "CaffeineC"
       }
     ],
     "menus": {
@@ -67,6 +81,18 @@
         },
         {
           "command": "caffeinec.update",
+          "when": "editorLangId == cffc"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "caffeinec.run",
+          "group": "navigation",
+          "when": "editorLangId == cffc"
+        },
+        {
+          "command": "caffeinec.build",
+          "group": "navigation",
           "when": "editorLangId == cffc"
         }
       ]

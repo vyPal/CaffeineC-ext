@@ -248,7 +248,7 @@
 			"name": "field.definition.cffc"
 		},
 		{
-      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false)\\b",
+      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false|vararg)\\b",
       "name": "keyword.control.cffc"
     },
 		{

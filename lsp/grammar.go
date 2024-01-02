@@ -159,8 +159,14 @@ type VariableType struct {
 	Pos  lexer.Position
 }
 
+type KWConst struct {
+	Pos   lexer.Position
+	Dummy bool `parser:"'const'"`
+}
+
 type VariableDefinition struct {
 	Pos        lexer.Position
+	KWConst    *KWConst      `parser:"@@?"`
 	Var        *KWVar        `parser:"@@"`
 	Name       *VariableName `parser:"@@ ':'"`
 	Type       *VariableType `parser:"@@"`
@@ -222,8 +228,9 @@ type FunctionName struct {
 
 type FunctionDefinition struct {
 	Pos        lexer.Position
-	Private    *KWPrivate            `parser:"( @@'private' )?"`
-	Static     *KWStatic             `parser:"( @@'static' )?"`
+	Private    *KWPrivate            `parser:"@@?"`
+	Static     *KWStatic             `parser:"@@?"`
+	KWVararg   *KWVararg             `parser:"@@?"`
 	KWFunc     *KWFunc               `parser:"@@"`
 	Name       *FunctionName         `parser:"@@"`
 	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')'"`
@@ -265,7 +272,7 @@ type If struct {
 	Condition *Expression  `parser:"'(' @@ ')'"`
 	Body      []*Statement `parser:"'{' @@* '}'"`
 	ElseIf    []*ElseIf    `parser:"( @@ )*"`
-	Else      []*Statement `parser:"( @@ '{' @@* '}' )?"`
+	Else      *Else        `parser:"( @@ )?"`
 }
 
 type ElseIf struct {
@@ -274,6 +281,12 @@ type ElseIf struct {
 	KWIf      *KWIf        `parser:"@@"`
 	Condition *Expression  `parser:"'(' @@ ')'"`
 	Body      []*Statement `parser:"'{' @@* '}'"`
+}
+
+type Else struct {
+	Pos    lexer.Position
+	KWElse *KWElse      `parser:"@@"`
+	Body   []*Statement `parser:"'{' @@* '}'"`
 }
 
 type KWFor struct {
@@ -310,7 +323,7 @@ type KWReturn struct {
 type Return struct {
 	Pos        lexer.Position
 	KWReturn   *KWReturn   `parser:"@@"`
-	Expression *Expression `parser:"@@ ';'"`
+	Expression *Expression `parser:"@@? ';'"`
 }
 
 type KWExtern struct {
@@ -328,13 +341,31 @@ type ReturnType struct {
 	Pos  lexer.Position
 }
 
+type KWVararg struct {
+	Pos   lexer.Position
+	Dummy bool `parser:"'vararg'"`
+}
+
 type ExternalFunctionDefinition struct {
 	Pos        lexer.Position
 	KWExtern   *KWExtern             `parser:"@@"`
+	KWVararg   *KWVararg             `parser:"@@?"`
 	KWFunc     *KWFunc               `parser:"@@"`
 	Name       *ExternalFunctionName `parser:"@@"`
 	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')' ':'"`
 	ReturnType *ReturnType           `parser:"@@"`
+}
+
+type ExternalDefinition struct {
+	Pos      lexer.Position
+	Function *ExternalFunctionDefinition `parser:"(?= 'extern' 'vararg'? 'func')@@?"`
+	Variable *ExternalVariableDefinition `parser:"| (?= 'extern' 'var')@@?"`
+}
+
+type ExternalVariableDefinition struct {
+	Pos  lexer.Position
+	Name string `parser:"'extern' 'var' @Ident"`
+	Type string `parser:"':' @('*'? Ident)"`
 }
 
 type KWImport struct {
@@ -383,23 +414,23 @@ type Symbol struct {
 
 type Statement struct {
 	Pos                lexer.Position
-	VariableDefinition *VariableDefinition         `parser:"(?= 'var' Ident) @@? (';' | '\\n')?"`
-	Assignment         *Assignment                 `parser:"| (?= Ident ( '.' Ident)* '=') @@? (';' | '\\n')?"`
-	ExternalFunction   *ExternalFunctionDefinition `parser:"| (?= 'extern' 'func') @@? (';' | '\\n')?"`
-	FunctionDefinition *FunctionDefinition         `parser:"| (?= 'private'? 'static'? 'func') @@?"`
-	ClassDefinition    *ClassDefinition            `parser:"| (?= 'class') @@?"`
-	If                 *If                         `parser:"| (?= 'if') @@?"`
-	For                *For                        `parser:"| (?= 'for') @@?"`
-	While              *While                      `parser:"| (?= 'while') @@?"`
-	Return             *Return                     `parser:"| (?= 'return') @@?"`
-	FieldDefinition    *FieldDefinition            `parser:"| (?= 'private'? Ident ':' '*'? Ident) @@?"`
-	Import             *Import                     `parser:"| (?= 'import') @@?"`
-	FromImportMultiple *FromImportMultiple         `parser:"| (?= 'from' String 'import' '{') @@?"`
-	FromImport         *FromImport                 `parser:"| (?= 'from' String 'import') @@?"`
-	Export             *Statement                  `parser:"| 'export' @@? (';' | '\\n')?"`
-	Break              *string                     `parser:"| 'break' (';' | '\\n')?"`
-	Continue           *string                     `parser:"| 'continue' (';' | '\\n')?"`
-	Expression         *Expression                 `parser:"| @@ ';'"`
+	VariableDefinition *VariableDefinition `parser:"(?= 'const'? 'var' Ident) @@? (';' | '\\n')?"`
+	Assignment         *Assignment         `parser:"| (?= Ident ( '.' Ident)* '=') @@? (';' | '\\n')?"`
+	External           *ExternalDefinition `parser:"| (?= 'extern') @@? (';' | '\\n')?"`
+	FunctionDefinition *FunctionDefinition `parser:"| (?= 'private'? 'static'? 'vararg'? 'func') @@?"`
+	ClassDefinition    *ClassDefinition    `parser:"| (?= 'class') @@?"`
+	If                 *If                 `parser:"| (?= 'if') @@?"`
+	For                *For                `parser:"| (?= 'for') @@?"`
+	While              *While              `parser:"| (?= 'while') @@?"`
+	Return             *Return             `parser:"| (?= 'return') @@?"`
+	FieldDefinition    *FieldDefinition    `parser:"| (?= 'private'? Ident ':' '*'? Ident) @@?"`
+	Import             *Import             `parser:"| (?= 'import') @@?"`
+	FromImportMultiple *FromImportMultiple `parser:"| (?= 'from' String 'import' '{') @@?"`
+	FromImport         *FromImport         `parser:"| (?= 'from' String 'import') @@?"`
+	Export             *Statement          `parser:"| 'export' @@? (';' | '\\n')?"`
+	Break              *string             `parser:"| 'break' (';' | '\\n')?"`
+	Continue           *string             `parser:"| 'continue' (';' | '\\n')?"`
+	Expression         *Expression         `parser:"| @@ ';'"`
 }
 
 type Program struct {
