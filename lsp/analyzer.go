@@ -120,6 +120,25 @@ func (s *Server) Hover(ctx context.Context, params HoverParams) (*MdHover, error
 									),
 								},
 							}, nil
+						} else if symbol.Type == "field" {
+							return &MdHover{
+								Contents: MarkupContent{
+									Kind: "markdown",
+									Value: fmt.Sprintf(
+										"### Field Information\n\n"+
+											"**Name:** `%s`\n\n"+
+											"**Type:** `%s`\n\n"+
+											"### Field Definition\n\n"+
+											"```cffc\n%s\n```\n"+
+											"---\n"+
+											"[Go to field definition](%s)",
+										symbol.Name,
+										symbol.Data["type"],
+										symbol.Data["VDefinition"],
+										symbol.Data["VLocation"],
+									),
+								},
+							}, nil
 						} else if symbol.Type == "parameter" {
 							return &MdHover{
 								Contents: MarkupContent{
@@ -432,6 +451,15 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 	} else if stmt.Continue != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.Pos.Line) - 1, uint(stmt.Pos.Column) - 1, 8, 19, 0}...)
 	} else if stmt.FieldDefinition != nil {
+		SymbolTable[stmt.FieldDefinition.Name.Name] = CTSymbol{
+			Name: stmt.FieldDefinition.Name.Name,
+			Type: "field",
+			Data: map[string]string{
+				"type":        stmt.FieldDefinition.Type.Type,
+				"VLocation":   fmt.Sprintf("%s#L%d", uri, stmt.FieldDefinition.Name.Pos.Line),
+				"VDefinition": stmt.FieldDefinition.Name.Name + ": " + stmt.FieldDefinition.Type.Type,
+			},
+		}
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Name.Pos.Line) - 1, uint(stmt.FieldDefinition.Name.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Name.Name)), 8, 0b10}...)
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Type.Pos.Line) - 1, uint(stmt.FieldDefinition.Type.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Type.Type)), 5, 0}...)
 	} else if stmt.Export != nil {

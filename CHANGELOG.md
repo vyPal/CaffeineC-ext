@@ -1,4 +1,7 @@
 # Change Log
+### 1.0.3
+- Add hovers for fields
+- 
 ### 1.0.2
 - Add dynamic hovers for functions and variables
 - Add run button to vscode

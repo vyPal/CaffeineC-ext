@@ -44,6 +44,8 @@ export function registerCommands(context: vscode.ExtensionContext) {
         const dir = path.dirname(filePath);
         const fileName = path.basename(filePath);
 
+        const cfconfFile = context.workspaceState.get<string>('cfconfFile');
+
         let terminal = vscode.window.terminals.find(t => t.name === 'CaffeineC');
         if (!terminal) {
           terminal = vscode.window.createTerminal({
@@ -53,7 +55,11 @@ export function registerCommands(context: vscode.ExtensionContext) {
         }
 
         terminal.show();
-        terminal.sendText(`CaffeineC build ${fileName}`);
+        if (cfconfFile) {
+          terminal.sendText(`CaffeineC build ${fileName} --config ${cfconfFile}`);
+        } else {
+          terminal.sendText(`CaffeineC build ${fileName}`);
+        }
       }
     }
   }));
