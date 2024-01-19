@@ -2,7 +2,7 @@
   "name": "caffeinec-ext",
   "displayName": "CaffeineC",
   "description": "Language support for the CaffeineC programming language",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "engines": {
     "vscode": "^1.74.0"
   },

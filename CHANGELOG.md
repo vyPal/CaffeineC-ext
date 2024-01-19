@@ -1,7 +1,12 @@
 # Change Log
+### 1.0.4
+- Hovers can now load data from libraries
+- Fixed grammar issues
+- Fix run command not working sometimes
+
 ### 1.0.3
 - Add hovers for fields
-- 
+
 ### 1.0.2
 - Add dynamic hovers for functions and variables
 - Add run button to vscode

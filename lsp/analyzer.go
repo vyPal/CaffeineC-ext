@@ -395,8 +395,19 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 		// Get the directory of the current file.
 		dir := filepath.Dir(uri.Path)
 
-		// Resolve the path of the imported file.
-		importPath := filepath.Join(dir, strings.Trim(stmt.Import.Package, "\""))
+		importPath, err := ResolveImportPath(strings.Trim(stmt.Import.Package, "\""), cache)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if !filepath.IsAbs(importPath) {
+			importPath = filepath.Join(dir, importPath)
+		}
+
+		if !strings.HasSuffix(importPath, ".cffc") {
+			importPath += ".cffc"
+		}
 
 		// Read the file contents.
 		content, err := os.ReadFile(importPath)

@@ -184,7 +184,7 @@ type FieldName struct {
 }
 
 type FieldType struct {
-	Type string `parser:"@Ident"`
+	Type string `parser:"@('*'? Ident)"`
 	Pos  lexer.Position
 }
 

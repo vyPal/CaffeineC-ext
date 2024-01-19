@@ -23,6 +23,8 @@ var server *Server
 
 var SymbolTable = make(map[string]CTSymbol)
 
+var cache PackageCache
+
 type CTSymbol struct {
 	Name string
 	Type string
@@ -48,6 +50,22 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 
 		parser = participle.MustBuild[Program]()
 		server = &Server{conn: conn, documents: make(map[string]string), asts: make(map[string]*Program)}
+
+		cache = PackageCache{}
+		err := cache.Init()
+		if err != nil {
+			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
+				Type:    lsp.MTError,
+				Message: err.Error(),
+			})
+		}
+		err = cache.CacheScan(true)
+		if err != nil {
+			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
+				Type:    lsp.MTError,
+				Message: err.Error(),
+			})
+		}
 
 		res := &lsp.InitializeResult{
 			Capabilities: lsp.ServerCapabilities{

@@ -27,7 +27,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
 
         terminal.show();
         if (cfconfFile) {
-          terminal.sendText(`CaffeineC run ${fileName} --config ${cfconfFile}`);
+          terminal.sendText(`CaffeineC run --config ${cfconfFile}`);
         } else {
           terminal.sendText(`CaffeineC run ${fileName}`);
         }
@@ -56,7 +56,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
 
         terminal.show();
         if (cfconfFile) {
-          terminal.sendText(`CaffeineC build ${fileName} --config ${cfconfFile}`);
+          terminal.sendText(`CaffeineC build --config ${cfconfFile}`);
         } else {
           terminal.sendText(`CaffeineC build ${fileName}`);
         }
