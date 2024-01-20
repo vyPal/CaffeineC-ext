@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // The whole response has been received.
         res.on('end', () => {
           const latestRelease = JSON.parse(data);
-          const latestVersion = latestRelease.tag_name.substring(1); // Remove the 'v' from the start of the tag
+          const latestVersion = latestRelease.tag_name;
 
           // Compare the installed version with the latest version
           if (installedVersion !== latestVersion) {

@@ -196,7 +196,7 @@
 				"2": { "name": "string.quoted.double.cffc" }
 			},
 			"endCaptures": {
-				"1": { "name": "string.quoted.double.cffc" },
+				"1": { "name": "string.quoted.double.cffc" }
 			},
 			"patterns": [
 				{ "include": "#string" }

@@ -18,5 +18,5 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.5
-- Add support for context-aware get/set/op functions
+### 1.0.6
+- Fix broken formatting
