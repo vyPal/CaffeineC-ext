@@ -221,9 +221,16 @@ type KWFunc struct {
 	Dummy bool `parser:"'func'"`
 }
 
+type FunctionModifiers struct {
+	Op  bool `parser:"@'op'?"`
+	Get bool `parser:"@'get'?"`
+	Set bool `parser:"@'set'?"`
+}
+
 type FunctionName struct {
-	Name string `parser:"@Ident"`
-	Pos  lexer.Position
+	Pos    lexer.Position
+	Name   string `parser:"@Ident?"`
+	String string `parser:"@String?"`
 }
 
 type FunctionDefinition struct {
@@ -232,6 +239,7 @@ type FunctionDefinition struct {
 	Static     *KWStatic             `parser:"@@?"`
 	KWVararg   *KWVararg             `parser:"@@?"`
 	KWFunc     *KWFunc               `parser:"@@"`
+	Modifiers  *FunctionModifiers    `parser:"@@"`
 	Name       *FunctionName         `parser:"@@"`
 	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')'"`
 	ReturnType *ReturnType           `parser:"( ':' @@ )?"`

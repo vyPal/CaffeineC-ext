@@ -190,14 +190,13 @@
 		},
 		{
 			"begin": "\\b(import)\\s*(\")",
-			"end": "(\"\\s*;)\\b",
+			"end": "(\")\\s*;\\b",
 			"beginCaptures": {
 				"1": { "name": "keyword.control.import.cffc" },
 				"2": { "name": "string.quoted.double.cffc" }
 			},
 			"endCaptures": {
 				"1": { "name": "string.quoted.double.cffc" },
-				"2": { "name": "punctuation.terminator.statement.cffc" }
 			},
 			"patterns": [
 				{ "include": "#string" }
@@ -248,7 +247,7 @@
 			"name": "field.definition.cffc"
 		},
 		{
-      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false|vararg)\\b",
+      "match": "\\b(var|extern|func|class|if|for|while|return|private|import|from|export|break|continue|new|true|false|vararg|get|set|op)\\b",
       "name": "keyword.control.cffc"
     },
 		{

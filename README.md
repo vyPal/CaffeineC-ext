@@ -18,7 +18,5 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.4
-- Hovers can now load data from libraries
-- Fixed grammar issues
-- Fix run command not working sometimes
+### 1.0.5
+- Add support for context-aware get/set/op functions

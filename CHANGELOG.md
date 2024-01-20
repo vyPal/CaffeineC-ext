@@ -1,19 +1,22 @@
 # Change Log
-### 1.0.4
+## 1.0.5
+- Add support for context-aware get/set/op functions
+
+## 1.0.4
 - Hovers can now load data from libraries
 - Fixed grammar issues
 - Fix run command not working sometimes
 
-### 1.0.3
+## 1.0.3
 - Add hovers for fields
 
-### 1.0.2
+## 1.0.2
 - Add dynamic hovers for functions and variables
 - Add run button to vscode
 - Finish update and install commands
 - Support for v2.0.21 grammar
 
-### 1.0.1
+## 1.0.1
 - Improved lsp, syntax highlighting
 - Icons
 
