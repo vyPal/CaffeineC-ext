@@ -18,5 +18,6 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.6
-- Fix broken formatting
+### 1.0.7
+- Add bitcast support
+- Add comment highlighting

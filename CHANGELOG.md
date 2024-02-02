@@ -1,4 +1,8 @@
 # Change Log
+### 1.0.7
+- Add bitcast support
+- Add comment highlighting
+
 ## 1.0.6
 - Fix broken formatting
 

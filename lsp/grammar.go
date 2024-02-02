@@ -80,6 +80,7 @@ type FunctionCall struct {
 type Factor struct {
 	Pos              lexer.Position
 	Value            *Value            `parser:"  @@"`
+	BitCast          *BitCast          `parser:"| (?= '(') @@?"`
 	ClassInitializer *ClassInitializer `parser:"| (?= 'new') @@"`
 	SubExpression    *Expression       `parser:"| '(' @@ ')'"`
 	FunctionCall     *FunctionCall     `parser:"| (?= Ident '(') @@"`
@@ -418,6 +419,12 @@ type Alias struct {
 type Symbol struct {
 	Name string `parser:"@Ident"`
 	As   Alias  `parser:"@@?"`
+}
+
+type BitCast struct {
+	Pos  lexer.Position
+	Expr *Expression `parser:"'(' @@ ')'"`
+	Type string      `parser:"':' @('*'? Ident)"`
 }
 
 type Statement struct {
