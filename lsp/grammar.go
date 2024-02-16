@@ -37,15 +37,17 @@ func (d *Duration) Capture(values []string) error {
 type Value struct {
 	Pos      lexer.Position
 	Float    *float64  `parser:"  @Float"`
-	Int      *int64    `parser:"| @Int"`
+	Duration *Duration `parser:"| @Int @('h' | 'm' | 's' | 'ms' | 'us' | 'ns')"`
+	Int      *int64    `parser:"| @('-'? Int)"`
 	Bool     *Bool     `parser:"| @('true' | 'false')"`
 	String   *string   `parser:"| @String"`
-	Duration *Duration `parser:"| @Int @('h' | 'm' | 's' | 'ms' | 'us' | 'ns')"`
+	Null     bool      `parser:"| @'null'"`
 }
 
 type Identifier struct {
 	Pos  lexer.Position
 	Name string      `parser:"@Ident"`
+	GEP  *Expression `parser:"('[' @@ ']')?"`
 	Sub  *Identifier `parser:"( '.' @@ )*"`
 }
 
@@ -80,10 +82,10 @@ type FunctionCall struct {
 type Factor struct {
 	Pos              lexer.Position
 	Value            *Value            `parser:"  @@"`
+	FunctionCall     *FunctionCall     `parser:"| (?= Ident '(') @@"`
 	BitCast          *BitCast          `parser:"| (?= '(') @@?"`
 	ClassInitializer *ClassInitializer `parser:"| (?= 'new') @@"`
 	SubExpression    *Expression       `parser:"| '(' @@ ')'"`
-	FunctionCall     *FunctionCall     `parser:"| (?= Ident '(') @@"`
 	ClassMethod      *ClassMethod      `parser:"| (?= Ident ( '.' Ident)+ '(') @@"`
 	Identifier       *Identifier       `parser:"| @@"`
 }
@@ -430,7 +432,7 @@ type BitCast struct {
 type Statement struct {
 	Pos                lexer.Position
 	VariableDefinition *VariableDefinition `parser:"(?= 'const'? 'var' Ident) @@? (';' | '\\n')?"`
-	Assignment         *Assignment         `parser:"| (?= Ident ( '.' Ident)* '=') @@? (';' | '\\n')?"`
+	Assignment         *Assignment         `parser:"| (?= Ident ( '[' ~']' ']' )? ( '.' Ident ( '[' ~']' ']' )? )* '=') @@? (';' | '\\n')?"`
 	External           *ExternalDefinition `parser:"| (?= 'extern') @@? (';' | '\\n')?"`
 	FunctionDefinition *FunctionDefinition `parser:"| (?= 'private'? 'static'? 'vararg'? 'func') @@?"`
 	ClassDefinition    *ClassDefinition    `parser:"| (?= 'class') @@?"`
