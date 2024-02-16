@@ -80,6 +80,74 @@ type MarkupContent struct {
 	Value string `json:"value"`
 }
 
+func (s *Server) Complete(ctx context.Context, params lsp.CompletionParams) (*lsp.CompletionList, error) {
+	// Get the current state of the document.
+	doc := s.documents[string(params.TextDocument.URI)]
+
+	// Get the line and character position of the completion.
+	line := int(params.Position.Line)
+	character := int(params.Position.Character)
+	lines := strings.Split(doc, "\n")
+
+	// Check if the line index is within the bounds of the lines slice.
+	if line < 0 || line >= len(lines) {
+		fmt.Println("Line index out of bounds")
+		return &lsp.CompletionList{
+			IsIncomplete: false,
+			Items:        []lsp.CompletionItem{},
+		}, nil
+	}
+
+	// Check if the character index is within the bounds of the current line string.
+	if character < 0 || character > len(lines[line]) {
+		fmt.Println("Character index out of bounds")
+		fmt.Println("Character: " + strconv.Itoa(character) + " Line length: " + strconv.Itoa(len(lines[line])))
+		fmt.Println("Line:", line)
+		return &lsp.CompletionList{
+			IsIncomplete: false,
+			Items:        []lsp.CompletionItem{},
+		}, nil
+	}
+
+	text := lines[line][:character]
+
+	// Create a slice to store the matching symbols.
+	var matchingSymbols []lsp.CompletionItem
+
+	// Iterate over the SymbolTable.
+	for name, symbol := range SymbolTable {
+		// Check if the name of the symbol contains the text.
+		if strings.Contains(name, text) {
+			// Add the symbol to the matchingSymbols slice.
+			kind := lsp.CIKVariable // Default to variable.
+
+			switch symbol.Type {
+			case "variable":
+				kind = lsp.CIKVariable
+			case "field":
+				kind = lsp.CIKField
+			case "parameter":
+				kind = lsp.CIKValue // There's no specific kind for parameters, so we use CIKValue.
+			case "function":
+				kind = lsp.CIKFunction
+			}
+
+			matchingSymbols = append(matchingSymbols, lsp.CompletionItem{
+				Label:  symbol.Name,
+				Kind:   kind,
+				Detail: symbol.Type,
+			})
+			fmt.Println("Symbol: " + symbol.Name + " Type: " + symbol.Type)
+		}
+	}
+
+	// Return a list of matching symbols.
+	return &lsp.CompletionList{
+		IsIncomplete: false,
+		Items:        matchingSymbols,
+	}, nil
+}
+
 func (s *Server) Hover(ctx context.Context, params HoverParams) (*MdHover, error) {
 	// Get the current state of the document.
 	doc := s.documents[string(params.TextDocument.URI)]

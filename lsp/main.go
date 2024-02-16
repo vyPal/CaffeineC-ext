@@ -234,6 +234,30 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 				})
 				conn.Reply(ctx, req.ID, nil)
 		*/
+	case "textDocument/completion":
+		params := &lsp.CompletionParams{}
+		if err := json.Unmarshal(*req.Params, params); err != nil {
+			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
+				Type:    lsp.MTError,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		fmt.Println("Completion params: ", params)
+
+		completions, err := server.Complete(ctx, *params)
+		if err != nil {
+			conn.Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
+				Type:    lsp.MTError,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		conn.Reply(ctx, req.ID, lsp.CompletionList{IsIncomplete: true, Items: completions.Items})
+	default:
+		fmt.Println("Unknown method: ", req.Method)
 	}
 }
 
