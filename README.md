@@ -18,6 +18,5 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.8
-- GEP support
-- Start work on completions
+### 1.0.9
+- Support multi-pointers

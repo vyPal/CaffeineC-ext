@@ -158,7 +158,7 @@ type VariableName struct {
 }
 
 type VariableType struct {
-	Type string `parser:"@('*'? Ident)"`
+	Type string `parser:"@('*'* Ident)"`
 	Pos  lexer.Position
 }
 
@@ -187,7 +187,7 @@ type FieldName struct {
 }
 
 type FieldType struct {
-	Type string `parser:"@('*'? Ident)"`
+	Type string `parser:"@('*'* Ident)"`
 	Pos  lexer.Position
 }
 
@@ -204,7 +204,7 @@ type ArgumentName struct {
 }
 
 type ArgumentType struct {
-	Type string `parser:"@('*'? Ident)"`
+	Type string `parser:"@('*'* Ident)"`
 	Pos  lexer.Position
 }
 
@@ -348,7 +348,7 @@ type ExternalFunctionName struct {
 }
 
 type ReturnType struct {
-	Type string `parser:"@('*'? Ident)"`
+	Type string `parser:"@('*'* Ident)"`
 	Pos  lexer.Position
 }
 
@@ -376,7 +376,7 @@ type ExternalDefinition struct {
 type ExternalVariableDefinition struct {
 	Pos  lexer.Position
 	Name string `parser:"'extern' 'var' @Ident"`
-	Type string `parser:"':' @('*'? Ident)"`
+	Type string `parser:"':' @('*'* Ident)"`
 }
 
 type KWImport struct {
@@ -426,7 +426,7 @@ type Symbol struct {
 type BitCast struct {
 	Pos  lexer.Position
 	Expr *Expression `parser:"'(' @@ ')'"`
-	Type string      `parser:"':' @('*'? Ident)"`
+	Type string      `parser:"':' @('*'* Ident)"`
 }
 
 type Statement struct {
@@ -440,7 +440,7 @@ type Statement struct {
 	For                *For                `parser:"| (?= 'for') @@?"`
 	While              *While              `parser:"| (?= 'while') @@?"`
 	Return             *Return             `parser:"| (?= 'return') @@?"`
-	FieldDefinition    *FieldDefinition    `parser:"| (?= 'private'? Ident ':' '*'? Ident) @@?"`
+	FieldDefinition    *FieldDefinition    `parser:"| (?= 'private'? Ident ':' '*'* Ident) @@?"`
 	Import             *Import             `parser:"| (?= 'import') @@?"`
 	FromImportMultiple *FromImportMultiple `parser:"| (?= 'from' String 'import' '{') @@?"`
 	FromImport         *FromImport         `parser:"| (?= 'from' String 'import') @@?"`

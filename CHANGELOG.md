@@ -1,8 +1,11 @@
 # Change Log
+### 1.0.9
+- Support multi-pointers
+
 ### 1.0.8
 - GEP support
 - Start work on completions
-  
+
 ### 1.0.7
 - Add bitcast support
 - Add comment highlighting
