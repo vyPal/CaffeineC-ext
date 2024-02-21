@@ -61,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
       });
     } else {
       // Extract the version number from the output
-      const installedVersion = stdout.split(' ')[2].trim();
+      const installedVersion = "v"+stdout.split(' ')[2].trim();
 
       // Fetch the latest release from the GitHub API
       https.get('https://api.github.com/repos/vyPal/CaffeineC/releases/latest', { headers: { 'User-Agent': 'node.js' } }, res => {

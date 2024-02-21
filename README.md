@@ -18,5 +18,6 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.9
-- Support multi-pointers
+### 1.0.10
+- Fix other grammar differences
+- Fix version comparison when checking for updates
