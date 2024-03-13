@@ -1,7 +1,10 @@
 # Change Log
+### 1.0.11
+- Fix lsp crashing when creating a new file
+
 ### 1.0.10
 - Fix other grammar differences
-- - Fix version comparison when checking for updates
+- Fix version comparison when checking for updates
 
 ### 1.0.9
 - Support multi-pointers

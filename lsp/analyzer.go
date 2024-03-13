@@ -21,6 +21,10 @@ func DecodeError(stderr string, conn *jsonrpc2.Conn, uri lsp.DocumentURI, ctx co
 
 	split := strings.Split(err, ":")
 
+	if len(split) < 3 {
+		return
+	}
+
 	line, _ := strconv.Atoi(split[0])
 	column, _ := strconv.Atoi(split[1])
 	message := strings.Join(split[2:], ":")
