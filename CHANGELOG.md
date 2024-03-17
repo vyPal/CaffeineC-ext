@@ -1,4 +1,7 @@
 # Change Log
+### 1.0.12
+- Fix grammar
+
 ### 1.0.11
 - Fix lsp crashing when creating a new file
 
