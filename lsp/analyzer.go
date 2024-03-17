@@ -361,7 +361,7 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 								s = append(s, p.Name.Name+": "+p.Type.Type)
 							}
 							return s
-						}(), ", ") + ")",
+						}(), ", ") + "): " + stmt.External.Function.ReturnType.Type,
 					},
 				}
 			}
@@ -376,7 +376,7 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 							s = append(s, p.Name.Name+": "+p.Type.Type)
 						}
 						return s
-					}(), ", ") + ")",
+					}(), ", ") + "): " + stmt.External.Function.ReturnType.Type,
 				},
 			}
 		}
@@ -397,7 +397,7 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 							s = append(s, p.Name.Name+": "+p.Type.Type)
 						}
 						return s
-					}(), ", ") + ")",
+					}(), ", ") + "): " + stmt.FunctionDefinition.ReturnType.Type,
 				},
 			}
 		}
@@ -412,7 +412,7 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 						s = append(s, p.Name.Name+": "+p.Type.Type)
 					}
 					return s
-				}(), ", ") + ")",
+				}(), ", ") + "): " + stmt.FunctionDefinition.ReturnType.Type,
 			},
 		}
 		for _, s := range stmt.FunctionDefinition.Body {
@@ -519,7 +519,22 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 									s = append(s, p.Name.Name+": "+p.Type.Type)
 								}
 								return s
-							}(), ", ") + ")",
+							}(), ", ") + "): " + importedStmt.Export.FunctionDefinition.ReturnType.Type,
+						},
+					}
+				} else if importedStmt.Export.External.Function != nil {
+					symbol = CTSymbol{
+						Name: importedStmt.Export.External.Function.Name.Name,
+						Type: "function",
+						Data: map[string]string{
+							"location": fmt.Sprintf("%s#L%d", importPath, importedStmt.Export.External.Function.Name.Pos.Line),
+							"definition": "extern func " + importedStmt.Export.External.Function.Name.Name + "(" + strings.Join(func() []string {
+								var s []string
+								for _, p := range importedStmt.Export.External.Function.Parameters {
+									s = append(s, p.Name.Name+": "+p.Type.Type)
+								}
+								return s
+							}(), ", ") + "): " + importedStmt.Export.External.Function.ReturnType.Type,
 						},
 					}
 				}
@@ -594,9 +609,9 @@ func analyzeFactor(fact *Factor, tokens *lsp.SemanticTokens) {
 	} else if fact.ClassInitializer != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(fact.ClassInitializer.New.Pos.Line) - 1, uint(fact.ClassInitializer.New.Pos.Column) - 1, 3, 19, 0}...)
 		tokens.Data = append(tokens.Data, []uint{uint(fact.ClassInitializer.ClassName.Pos.Line) - 1, uint(fact.ClassInitializer.ClassName.Pos.Column) - 1, uint(len(fact.ClassInitializer.ClassName.Name)), 1, 0}...)
-		// TODO: Add parameters
-	} else if fact.SubExpression != nil {
-		analyzeExpression(fact.SubExpression, tokens)
+		for _, e := range fact.ClassInitializer.Args.Arguments {
+			analyzeExpression(e, tokens)
+		}
 	} else if fact.FunctionCall != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(fact.FunctionCall.Pos.Line) - 1, uint(fact.FunctionCall.Pos.Column) - 1, uint(len(fact.FunctionCall.FunctionName)), 13, 0}...)
 		for _, e := range fact.FunctionCall.Args.Arguments {

@@ -85,9 +85,14 @@ type Factor struct {
 	FunctionCall     *FunctionCall     `parser:"| (?= Ident '(') @@"`
 	BitCast          *BitCast          `parser:"| (?= '(') @@?"`
 	ClassInitializer *ClassInitializer `parser:"| (?= 'new') @@"`
-	SubExpression    *Expression       `parser:"| '(' @@ ')'"`
 	ClassMethod      *ClassMethod      `parser:"| (?= Ident ( '.' Ident)+ '(') @@"`
 	Identifier       *Identifier       `parser:"| @@"`
+}
+
+type BitCast struct {
+	Pos  lexer.Position
+	Expr *Expression `parser:"'(' @@ ')'"`
+	Type string      `parser:"':'? @('*'* Ident)?"`
 }
 
 type OpTermSymbol struct {
@@ -421,12 +426,6 @@ type Alias struct {
 type Symbol struct {
 	Name string `parser:"@Ident"`
 	As   Alias  `parser:"@@?"`
-}
-
-type BitCast struct {
-	Pos  lexer.Position
-	Expr *Expression `parser:"'(' @@ ')'"`
-	Type string      `parser:"':' @('*'* Ident)"`
 }
 
 type Statement struct {
