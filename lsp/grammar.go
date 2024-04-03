@@ -6,15 +6,20 @@ import (
 	"github.com/alecthomas/participle/v2/lexer"
 )
 
-type Bool struct {
-	Value bool
-	Str   string
+type IdentWithPos struct {
 	Pos   lexer.Position
+	Value string
 }
 
+func (i *IdentWithPos) Capture(values []string) error {
+	i.Value = values[0]
+	return nil
+}
+
+type Bool bool
+
 func (b *Bool) Capture(values []string) error {
-	b.Value = values[0] == "true"
-	b.Str = values[0]
+	*b = values[0] == "true"
 	return nil
 }
 
@@ -36,19 +41,22 @@ func (d *Duration) Capture(values []string) error {
 
 type Value struct {
 	Pos      lexer.Position
-	Float    *float64  `parser:"  @Float"`
+	Float    *float64  `parser:"  @('-'? Float)"`
 	Duration *Duration `parser:"| @Int @('h' | 'm' | 's' | 'ms' | 'us' | 'ns')"`
 	Int      *int64    `parser:"| @('-'? Int)"`
+	HexInt   *string   `parser:"| @('0x' (Int | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F')+)"`
 	Bool     *Bool     `parser:"| @('true' | 'false')"`
 	String   *string   `parser:"| @String"`
 	Null     bool      `parser:"| @'null'"`
 }
 
 type Identifier struct {
-	Pos  lexer.Position
-	Name string      `parser:"@Ident"`
-	GEP  *Expression `parser:"('[' @@ ']')?"`
-	Sub  *Identifier `parser:"( '.' @@ )*"`
+	Pos   lexer.Position
+	Ref   string      `parser:"@'&'*"`
+	Deref string      `parser:"@'*'*"`
+	Name  string      `parser:"@Ident"`
+	GEP   *Expression `parser:"('[' @@ ']')?"`
+	Sub   *Identifier `parser:"( '.' @@ )*"`
 }
 
 type ArgumentList struct {
@@ -56,76 +64,32 @@ type ArgumentList struct {
 	Arguments []*Expression `parser:"( @@ ( ',' @@ )* )?"`
 }
 
-type KWNew struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'new'"`
-}
-
-type ClassName struct {
-	Name string `parser:"@Ident"`
-	Pos  lexer.Position
-}
-
 type ClassInitializer struct {
 	Pos       lexer.Position
-	New       *KWNew       `parser:"@@"`
-	ClassName *ClassName   `parser:"@@"`
+	ClassName IdentWithPos `parser:"@Ident"`
 	Args      ArgumentList `parser:"'(' @@ ')'"`
 }
 
 type FunctionCall struct {
 	Pos          lexer.Position
-	FunctionName string       `parser:"@Ident"`
+	FunctionName string       `parser:"@( Ident | String )"`
 	Args         ArgumentList `parser:"'(' @@ ')'"`
 }
 
 type Factor struct {
 	Pos              lexer.Position
 	Value            *Value            `parser:"  @@"`
-	FunctionCall     *FunctionCall     `parser:"| (?= Ident '(') @@"`
-	BitCast          *BitCast          `parser:"| (?= '(') @@?"`
-	ClassInitializer *ClassInitializer `parser:"| (?= 'new') @@"`
+	FunctionCall     *FunctionCall     `parser:"| (?= ( Ident | String ) '(') @@"`
+	BitCast          *BitCast          `parser:"| '(' @@"`
+	ClassInitializer *ClassInitializer `parser:"| 'new' @@"`
 	ClassMethod      *ClassMethod      `parser:"| (?= Ident ( '.' Ident)+ '(') @@"`
 	Identifier       *Identifier       `parser:"| @@"`
 }
 
 type BitCast struct {
 	Pos  lexer.Position
-	Expr *Expression `parser:"'(' @@ ')'"`
-	Type string      `parser:"':'? @('*'* Ident)?"`
-}
-
-type OpTermSymbol struct {
-	Op  string `parser:"@( '*' | '/' | '%' )"`
-	Pos lexer.Position
-}
-
-type OpTerm struct {
-	Pos  lexer.Position
-	Op   *OpTermSymbol `parser:"@@"`
-	Term *Factor       `parser:"@@"`
-}
-
-type OpComparisonSymbol struct {
-	Op  string `parser:"@( ('=' '=') | ( '<' '=' ) | '<'  | ( '>' '=' ) |'>' | ('!' '=') )"`
-	Pos lexer.Position
-}
-
-type OpComparison struct {
-	Pos        lexer.Position
-	Op         *OpComparisonSymbol `parser:"@@"`
-	Comparison *Term               `parser:"@@"`
-}
-
-type OpExpressionSymbol struct {
-	Op  string `parser:"@( '+' | '-' )"`
-	Pos lexer.Position
-}
-
-type OpExpression struct {
-	Pos        lexer.Position
-	Op         *OpExpressionSymbol `parser:"@@"`
-	Expression *Comparison         `parser:"@@"`
+	Expr *Expression `parser:"@@ ')'"`
+	Type string      `parser:"(':' @('*'* Ident))?"`
 }
 
 type Term struct {
@@ -134,10 +98,22 @@ type Term struct {
 	Right []*OpTerm `parser:"@@*"`
 }
 
+type OpTerm struct {
+	Pos  lexer.Position
+	Op   IdentWithPos `parser:"@( '*' | '/' | '%' )"`
+	Term *Factor      `parser:"@@"`
+}
+
 type Comparison struct {
 	Pos   lexer.Position
 	Left  *Term           `parser:"@@"`
 	Right []*OpComparison `parser:"@@*"`
+}
+
+type OpComparison struct {
+	Pos        lexer.Position
+	Op         IdentWithPos `parser:"@( ('=' '=') | ( '<' '=' ) | '<'  | ( '>' '=' ) |'>' | ('!' '=') )"`
+	Comparison *Term        `parser:"@@"`
 }
 
 type Expression struct {
@@ -146,124 +122,63 @@ type Expression struct {
 	Right []*OpExpression `parser:"@@*"`
 }
 
+type OpExpression struct {
+	Pos        lexer.Position
+	Op         IdentWithPos `parser:"@( '+' | '-' | '&' '&' | '|' '|' )"`
+	Expression *Comparison  `parser:"@@"`
+}
+
 type Assignment struct {
 	Pos   lexer.Position
 	Left  *Identifier `parser:"@@"`
 	Right *Expression `parser:"'=' @@"`
 }
 
-type KWVar struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'var'"`
-}
-
-type VariableName struct {
-	Name string `parser:"@Ident"`
-	Pos  lexer.Position
-}
-
-type VariableType struct {
-	Type string `parser:"@('*'* Ident)"`
-	Pos  lexer.Position
-}
-
-type KWConst struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'const'"`
-}
-
 type VariableDefinition struct {
 	Pos        lexer.Position
-	KWConst    *KWConst      `parser:"@@?"`
-	Var        *KWVar        `parser:"@@"`
-	Name       *VariableName `parser:"@@ ':'"`
-	Type       *VariableType `parser:"@@"`
-	Assignment *Expression   `parser:"( '=' @@ )?"`
-}
-
-type KWPrivate struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'private'"`
-}
-
-type FieldName struct {
-	Name string `parser:"@Ident"`
-	Pos  lexer.Position
-}
-
-type FieldType struct {
-	Type string `parser:"@('*'* Ident)"`
-	Pos  lexer.Position
+	Constant   bool         `parser:"'const'?"`
+	Name       IdentWithPos `parser:"'var' @Ident"`
+	Type       IdentWithPos `parser:"':' @('*'* Ident)"`
+	Assignment *Expression  `parser:"( '=' @@ )?"`
 }
 
 type FieldDefinition struct {
 	Pos     lexer.Position
-	Private *KWPrivate `parser:"@@?"`
-	Name    *FieldName `parser:"@@"`
-	Type    *FieldType `parser:"':' @@ ';'"`
-}
-
-type ArgumentName struct {
-	Name string `parser:"@Ident"`
-	Pos  lexer.Position
-}
-
-type ArgumentType struct {
-	Type string `parser:"@('*'* Ident)"`
-	Pos  lexer.Position
+	Private bool         `parser:"@'private'?"`
+	Name    IdentWithPos `parser:"@Ident"`
+	Type    IdentWithPos `parser:"':' @('*'* Ident) ';'"`
 }
 
 type ArgumentDefinition struct {
 	Pos  lexer.Position
-	Name *ArgumentName `parser:"@@ ':'"`
-	Type *ArgumentType `parser:"@@"`
+	Name IdentWithPos `parser:"@Ident"`
+	Type IdentWithPos `parser:"':' @('*'* Ident)"`
 }
 
-type KWStatic struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'static'"`
-}
-
-type KWFunc struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'func'"`
-}
-
-type FunctionModifiers struct {
-	Op  bool `parser:"@'op'?"`
-	Get bool `parser:"@'get'?"`
-	Set bool `parser:"@'set'?"`
-}
-
-type FunctionName struct {
-	Pos    lexer.Position
-	Name   string `parser:"@Ident?"`
-	String string `parser:"@String?"`
+type FuncName struct {
+	Dummy  string       `parser:"'func'"`
+	Op     bool         `parser:"@'op'?"`
+	Get    bool         `parser:"@'get'?"`
+	Set    bool         `parser:"@'set'?"`
+	Name   IdentWithPos `parser:"@Ident?"`
+	String string       `parser:"@String?"`
 }
 
 type FunctionDefinition struct {
 	Pos        lexer.Position
-	Private    *KWPrivate            `parser:"@@?"`
-	Static     *KWStatic             `parser:"@@?"`
-	KWVararg   *KWVararg             `parser:"@@?"`
-	KWFunc     *KWFunc               `parser:"@@"`
-	Modifiers  *FunctionModifiers    `parser:"@@"`
-	Name       *FunctionName         `parser:"@@"`
+	Private    bool                  `parser:"@'private'?"`
+	Static     bool                  `parser:"@'static'?"`
+	Variadic   bool                  `parser:"@'vararg'?"`
+	Name       FuncName              `parser:"@@"`
 	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')'"`
-	ReturnType *ReturnType           `parser:"( ':' @@ )?"`
+	ReturnType IdentWithPos          `parser:"( ':' @('*'* Ident) )?"`
 	Body       []*Statement          `parser:"'{' @@* '}'"`
 }
 
-type KWClass struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'class'"`
-}
-
 type ClassDefinition struct {
-	Pos     lexer.Position
-	KWClass *KWClass     `parser:"@@"`
-	Name    *ClassName   `parser:"@@"`
-	Body    []*Statement `parser:"'{' @@* '}'"`
+	Pos  lexer.Position
+	Name IdentWithPos `parser:"@Ident"`
+	Body []*Statement `parser:"'{' @@* '}'"`
 }
 
 type ClassMethod struct {
@@ -272,144 +187,55 @@ type ClassMethod struct {
 	Args       *ArgumentList `parser:"'(' @@ ')'"`
 }
 
-type KWIf struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'if'"`
-}
-
-type KWElse struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'else'"`
-}
-
 type If struct {
 	Pos       lexer.Position
-	KWIf      *KWIf        `parser:"@@"`
 	Condition *Expression  `parser:"'(' @@ ')'"`
 	Body      []*Statement `parser:"'{' @@* '}'"`
-	ElseIf    []*ElseIf    `parser:"( @@ )*"`
-	Else      *Else        `parser:"( @@ )?"`
+	ElseIf    []*ElseIf    `parser:"( 'else' 'if' @@ )*"`
+	Else      []*Statement `parser:"( 'else' '{' @@* '}' )?"`
 }
 
 type ElseIf struct {
 	Pos       lexer.Position
-	KWElse    *KWElse      `parser:"@@"`
-	KWIf      *KWIf        `parser:"@@"`
 	Condition *Expression  `parser:"'(' @@ ')'"`
 	Body      []*Statement `parser:"'{' @@* '}'"`
 }
 
-type Else struct {
-	Pos    lexer.Position
-	KWElse *KWElse      `parser:"@@"`
-	Body   []*Statement `parser:"'{' @@* '}'"`
-}
-
-type KWFor struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'for'"`
-}
-
 type For struct {
 	Pos         lexer.Position
-	KWFor       *KWFor       `parser:"@@"`
 	Initializer *Statement   `parser:"'(' @@"`
 	Condition   *Expression  `parser:"@@ ';'"`
 	Increment   *Statement   `parser:"@@ ')'"`
 	Body        []*Statement `parser:"'{' @@* '}'"`
 }
 
-type KWWhile struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'while'"`
-}
-
 type While struct {
 	Pos       lexer.Position
-	KWWhile   *KWWhile     `parser:"@@"`
 	Condition *Expression  `parser:"'(' @@ ')'"`
 	Body      []*Statement `parser:"'{' @@* '}'"`
 }
 
-type KWReturn struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'return'"`
-}
-
 type Return struct {
 	Pos        lexer.Position
-	KWReturn   *KWReturn   `parser:"@@"`
 	Expression *Expression `parser:"@@? ';'"`
-}
-
-type KWExtern struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'extern'"`
-}
-
-type ExternalFunctionName struct {
-	Name string `parser:"@Ident"`
-	Pos  lexer.Position
-}
-
-type ReturnType struct {
-	Type string `parser:"@('*'* Ident)"`
-	Pos  lexer.Position
-}
-
-type KWVararg struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'vararg'"`
 }
 
 type ExternalFunctionDefinition struct {
 	Pos        lexer.Position
-	KWExtern   *KWExtern             `parser:"@@"`
-	KWVararg   *KWVararg             `parser:"@@?"`
-	KWFunc     *KWFunc               `parser:"@@"`
-	Name       *ExternalFunctionName `parser:"@@"`
-	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')' ':'"`
-	ReturnType *ReturnType           `parser:"@@"`
-}
-
-type ExternalDefinition struct {
-	Pos      lexer.Position
-	Function *ExternalFunctionDefinition `parser:"(?= 'extern' 'vararg'? 'func')@@?"`
-	Variable *ExternalVariableDefinition `parser:"| (?= 'extern' 'var')@@?"`
-}
-
-type ExternalVariableDefinition struct {
-	Pos  lexer.Position
-	Name string `parser:"'extern' 'var' @Ident"`
-	Type string `parser:"':' @('*'* Ident)"`
-}
-
-type KWImport struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'import'"`
-}
-
-type KWFrom struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'from'"`
-}
-
-type KWAs struct {
-	Pos   lexer.Position
-	Dummy bool `parser:"'as'"`
+	Variadic   bool                  `parser:"@'vararg'?"`
+	Name       IdentWithPos          `parser:"'func' @( Ident | String )"`
+	Parameters []*ArgumentDefinition `parser:"'(' ( @@ ( ',' @@ )* )? ')'"`
+	ReturnType IdentWithPos          `parser:"( ':' @('*'* Ident) )?"`
 }
 
 type Import struct {
-	Pos      lexer.Position
-	KWImport *KWImport `parser:"@@"`
-	Package  string    `parser:"@String ';'"`
+	Package string `parser:"@String ';'"`
 }
 
 type FromImport struct {
-	From    KWFrom   `parser:"@@"`
-	Package string   `parser:"@String"`
-	Import  KWImport `parser:"@@"`
-	Symbol  Symbol   `parser:"@@"`
+	Package string `parser:"'from' @String 'import'"`
+	Symbol  string `parser:"@Ident"`
+	Alias   string `parser:"('as' @Ident)? ';'"`
 }
 
 type FromImportMultiple struct {
@@ -417,36 +243,31 @@ type FromImportMultiple struct {
 	Symbols []Symbol `parser:"@@ (',' @@)* '}' ';'"`
 }
 
-type Alias struct {
-	Pos  lexer.Position
-	As   KWAs   `parser:"@@"`
-	Name string `parser:"@Ident"`
-}
-
 type Symbol struct {
-	Name string `parser:"@Ident"`
-	As   Alias  `parser:"@@?"`
+	Name  string `parser:"@Ident"`
+	Alias string `parser:"('as' @Ident)?"`
 }
 
 type Statement struct {
 	Pos                lexer.Position
-	VariableDefinition *VariableDefinition `parser:"(?= 'const'? 'var' Ident) @@? (';' | '\\n')?"`
-	Assignment         *Assignment         `parser:"| (?= Ident ( '[' ~']' ']' )? ( '.' Ident ( '[' ~']' ']' )? )* '=') @@? (';' | '\\n')?"`
-	External           *ExternalDefinition `parser:"| (?= 'extern') @@? (';' | '\\n')?"`
-	FunctionDefinition *FunctionDefinition `parser:"| (?= 'private'? 'static'? 'vararg'? 'func') @@?"`
-	ClassDefinition    *ClassDefinition    `parser:"| (?= 'class') @@?"`
-	If                 *If                 `parser:"| (?= 'if') @@?"`
-	For                *For                `parser:"| (?= 'for') @@?"`
-	While              *While              `parser:"| (?= 'while') @@?"`
-	Return             *Return             `parser:"| (?= 'return') @@?"`
-	FieldDefinition    *FieldDefinition    `parser:"| (?= 'private'? Ident ':' '*'* Ident) @@?"`
-	Import             *Import             `parser:"| (?= 'import') @@?"`
-	FromImportMultiple *FromImportMultiple `parser:"| (?= 'from' String 'import' '{') @@?"`
-	FromImport         *FromImport         `parser:"| (?= 'from' String 'import') @@?"`
-	Export             *Statement          `parser:"| 'export' @@? (';' | '\\n')?"`
-	Break              *string             `parser:"| 'break' (';' | '\\n')?"`
-	Continue           *string             `parser:"| 'continue' (';' | '\\n')?"`
-	Expression         *Expression         `parser:"| @@ ';'"`
+	VariableDefinition *VariableDefinition         `parser:"(?= 'const'? 'var' Ident) @@? (';' | '\\n')?"`
+	Assignment         *Assignment                 `parser:"| (?= Ident ( '[' ~']' ']' )? ( '.' Ident ( '[' ~']' ']' )? )* '=') @@? (';' | '\\n')?"`
+	External           *ExternalFunctionDefinition `parser:"| 'extern' @@ ';'"`
+	Export             *Statement                  `parser:"| 'export' @@"`
+	FunctionDefinition *FunctionDefinition         `parser:"| (?= 'private'? 'static'? 'func') @@?"`
+	ClassDefinition    *ClassDefinition            `parser:"| 'class' @@?"`
+	If                 *If                         `parser:"| 'if' @@?"`
+	For                *For                        `parser:"| 'for' @@?"`
+	While              *While                      `parser:"| 'while' @@?"`
+	Return             *Return                     `parser:"| 'return' @@?"`
+	FieldDefinition    *FieldDefinition            `parser:"| (?= 'private'? Ident ':' '*'* Ident) @@?"`
+	Import             *Import                     `parser:"| 'import' @@?"`
+	FromImportMultiple *FromImportMultiple         `parser:"| (?= 'from' String 'import' '{') @@?"`
+	FromImport         *FromImport                 `parser:"| (?= 'from' String 'import') @@?"`
+	Break              *string                     `parser:"| @('break' (';' | '\\n')?)"`
+	Continue           *string                     `parser:"| @('continue' (';' | '\\n')?)"`
+	Comment            *string                     `parser:"| @Comment"`
+	Expression         *Expression                 `parser:"| @@ ';'"`
 }
 
 type Program struct {

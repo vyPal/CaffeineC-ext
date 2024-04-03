@@ -1,4 +1,7 @@
 # Change Log
+### 1.0.13
+- Synchronize grammar with main CaffeineC grammar
+
 ### 1.0.12
 - Fix grammar
 

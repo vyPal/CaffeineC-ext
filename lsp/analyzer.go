@@ -325,17 +325,17 @@ func (s *Server) AnalyzeAst(ctx context.Context, req *jsonrpc2.Request, uri lsp.
 
 func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.DocumentURI) {
 	if stmt.VariableDefinition != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.VariableDefinition.Name.Pos.Line) - 1, uint(stmt.VariableDefinition.Name.Pos.Column) - 1, uint(len(stmt.VariableDefinition.Name.Name)), 8, 0b10}...)
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.VariableDefinition.Name.Pos.Line) - 1, uint(stmt.VariableDefinition.Name.Pos.Column) - 1, uint(len(stmt.VariableDefinition.Name.Value)), 8, 0b10}...)
 		if stmt.VariableDefinition.Assignment != nil {
 			analyzeExpression(stmt.VariableDefinition.Assignment, tokens)
 		}
-		SymbolTable[stmt.VariableDefinition.Name.Name] = CTSymbol{
-			Name: stmt.VariableDefinition.Name.Name,
+		SymbolTable[stmt.VariableDefinition.Name.Value] = CTSymbol{
+			Name: stmt.VariableDefinition.Name.Value,
 			Type: "variable",
 			Data: map[string]string{
-				"type":        stmt.VariableDefinition.Type.Type,
+				"type":        stmt.VariableDefinition.Type.Value,
 				"VLocation":   fmt.Sprintf("%s#L%d", uri, stmt.VariableDefinition.Name.Pos.Line),
-				"VDefinition": "var " + stmt.VariableDefinition.Name.Name + ": " + stmt.VariableDefinition.Type.Type,
+				"VDefinition": "var " + stmt.VariableDefinition.Name.Value + ": " + stmt.VariableDefinition.Type.Value,
 			},
 		}
 	} else if stmt.Assignment != nil {
@@ -344,82 +344,82 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 			analyzeExpression(stmt.Assignment.Right, tokens)
 		}
 	} else if stmt.External != nil {
-		if stmt.External.Function != nil {
-			tokens.Data = append(tokens.Data, []uint{uint(stmt.External.Function.Name.Pos.Line) - 1, uint(stmt.External.Function.Name.Pos.Column) - 1, uint(len(stmt.External.Function.Name.Name)), 13, 0b10}...)
-			for _, p := range stmt.External.Function.Parameters {
-				tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
-				SymbolTable[p.Name.Name] = CTSymbol{
-					Name: p.Name.Name,
+		if stmt.External != nil {
+			tokens.Data = append(tokens.Data, []uint{uint(stmt.External.Name.Pos.Line) - 1, uint(stmt.External.Name.Pos.Column) - 1, uint(len(stmt.External.Name.Value)), 13, 0b10}...)
+			for _, p := range stmt.External.Parameters {
+				tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Value)), 7, 0b10}...)
+				SymbolTable[p.Name.Value] = CTSymbol{
+					Name: p.Name.Value,
 					Type: "parameter",
 					Data: map[string]string{
-						"type":      p.Type.Type,
-						"FName":     stmt.External.Function.Name.Name,
-						"FLocation": fmt.Sprintf("%s#L%d", uri, stmt.External.Function.Name.Pos.Line),
-						"FDefinition": "extern func " + stmt.External.Function.Name.Name + "(" + strings.Join(func() []string {
+						"type":      p.Type.Value,
+						"FName":     stmt.External.Name.Value,
+						"FLocation": fmt.Sprintf("%s#L%d", uri, stmt.External.Name.Pos.Line),
+						"FDefinition": "extern func " + stmt.External.Name.Value + "(" + strings.Join(func() []string {
 							var s []string
-							for _, p := range stmt.External.Function.Parameters {
-								s = append(s, p.Name.Name+": "+p.Type.Type)
+							for _, p := range stmt.External.Parameters {
+								s = append(s, p.Name.Value+": "+p.Type.Value)
 							}
 							return s
-						}(), ", ") + "): " + stmt.External.Function.ReturnType.Type,
+						}(), ", ") + "): " + stmt.External.ReturnType.Value,
 					},
 				}
 			}
-			SymbolTable[stmt.External.Function.Name.Name] = CTSymbol{
-				Name: stmt.External.Function.Name.Name,
+			SymbolTable[stmt.External.Name.Value] = CTSymbol{
+				Name: stmt.External.Name.Value,
 				Type: "function",
 				Data: map[string]string{
-					"location": fmt.Sprintf("%s#L%d", uri, stmt.External.Function.Name.Pos.Line),
-					"definition": "extern func " + stmt.External.Function.Name.Name + "(" + strings.Join(func() []string {
+					"location": fmt.Sprintf("%s#L%d", uri, stmt.External.Name.Pos.Line),
+					"definition": "extern func " + stmt.External.Name.Value + "(" + strings.Join(func() []string {
 						var s []string
-						for _, p := range stmt.External.Function.Parameters {
-							s = append(s, p.Name.Name+": "+p.Type.Type)
+						for _, p := range stmt.External.Parameters {
+							s = append(s, p.Name.Value+": "+p.Type.Value)
 						}
 						return s
-					}(), ", ") + "): " + stmt.External.Function.ReturnType.Type,
+					}(), ", ") + "): " + stmt.External.ReturnType.Value,
 				},
 			}
 		}
 	} else if stmt.FunctionDefinition != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.Name.Pos.Line) - 1, uint(stmt.FunctionDefinition.Name.Pos.Column) - 1, uint(len(stmt.FunctionDefinition.Name.Name)), 13, 0b10}...)
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.FunctionDefinition.Name.Name.Pos.Line) - 1, uint(stmt.FunctionDefinition.Name.Name.Pos.Column) - 1, uint(len(stmt.FunctionDefinition.Name.Name.Value)), 13, 0b10}...)
 		for _, p := range stmt.FunctionDefinition.Parameters {
-			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Name)), 7, 0b10}...)
-			SymbolTable[p.Name.Name] = CTSymbol{
-				Name: p.Name.Name,
+			tokens.Data = append(tokens.Data, []uint{uint(p.Name.Pos.Line) - 1, uint(p.Name.Pos.Column) - 1, uint(len(p.Name.Value)), 7, 0b10}...)
+			SymbolTable[p.Name.Value] = CTSymbol{
+				Name: p.Name.Value,
 				Type: "parameter",
 				Data: map[string]string{
-					"type":      p.Type.Type,
-					"FName":     stmt.FunctionDefinition.Name.Name,
-					"FLocation": fmt.Sprintf("%s#L%d", uri, stmt.FunctionDefinition.Name.Pos.Line),
-					"FDefinition": "func " + stmt.FunctionDefinition.Name.Name + "(" + strings.Join(func() []string {
+					"type":      p.Type.Value,
+					"FName":     stmt.FunctionDefinition.Name.Name.Value,
+					"FLocation": fmt.Sprintf("%s#L%d", uri, stmt.FunctionDefinition.Name.Name.Pos.Line),
+					"FDefinition": "func " + stmt.FunctionDefinition.Name.Name.Value + "(" + strings.Join(func() []string {
 						var s []string
 						for _, p := range stmt.FunctionDefinition.Parameters {
-							s = append(s, p.Name.Name+": "+p.Type.Type)
+							s = append(s, p.Name.Value+": "+p.Type.Value)
 						}
 						return s
-					}(), ", ") + "): " + stmt.FunctionDefinition.ReturnType.Type,
+					}(), ", ") + "): " + stmt.FunctionDefinition.ReturnType.Value,
 				},
 			}
 		}
-		SymbolTable[stmt.FunctionDefinition.Name.Name] = CTSymbol{
-			Name: stmt.FunctionDefinition.Name.Name,
+		SymbolTable[stmt.FunctionDefinition.Name.Name.Value] = CTSymbol{
+			Name: stmt.FunctionDefinition.Name.Name.Value,
 			Type: "function",
 			Data: map[string]string{
-				"location": fmt.Sprintf("%s#L%d", uri, stmt.FunctionDefinition.Name.Pos.Line),
-				"definition": "func " + stmt.FunctionDefinition.Name.Name + "(" + strings.Join(func() []string {
+				"location": fmt.Sprintf("%s#L%d", uri, stmt.FunctionDefinition.Name.Name.Pos.Line),
+				"definition": "func " + stmt.FunctionDefinition.Name.Name.Value + "(" + strings.Join(func() []string {
 					var s []string
 					for _, p := range stmt.FunctionDefinition.Parameters {
-						s = append(s, p.Name.Name+": "+p.Type.Type)
+						s = append(s, p.Name.Value+": "+p.Type.Value)
 					}
 					return s
-				}(), ", ") + "): " + stmt.FunctionDefinition.ReturnType.Type,
+				}(), ", ") + "): " + stmt.FunctionDefinition.ReturnType.Value,
 			},
 		}
 		for _, s := range stmt.FunctionDefinition.Body {
 			analyzeStatement(s, tokens, uri)
 		}
 	} else if stmt.ClassDefinition != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.ClassDefinition.Name.Pos.Line) - 1, uint(stmt.ClassDefinition.Name.Pos.Column) - 1, uint(len(stmt.ClassDefinition.Name.Name)), 1, 0b1}...)
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.ClassDefinition.Name.Pos.Line) - 1, uint(stmt.ClassDefinition.Name.Pos.Column) - 1, uint(len(stmt.ClassDefinition.Name.Value)), 1, 0b1}...)
 		for _, s := range stmt.ClassDefinition.Body {
 			analyzeStatement(s, tokens, uri)
 		}
@@ -429,15 +429,12 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 			analyzeStatement(s, tokens, uri)
 		}
 		for _, e := range stmt.If.ElseIf {
-			tokens.Data = append(tokens.Data, []uint{uint(e.KWElse.Pos.Line) - 1, uint(e.KWElse.Pos.Column) - 1, 4, 19, 0}...)
-			tokens.Data = append(tokens.Data, []uint{uint(e.KWIf.Pos.Line) - 1, uint(e.KWIf.Pos.Column) - 1, 2, 19, 0}...)
 			analyzeExpression(e.Condition, tokens)
 		}
-		for _, s := range stmt.If.Else.Body {
+		for _, s := range stmt.If.Else {
 			analyzeStatement(s, tokens, uri)
 		}
 	} else if stmt.For != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.For.KWFor.Pos.Line) - 1, uint(stmt.For.KWFor.Pos.Column) - 1, 3, 19, 0}...)
 		if stmt.For.Initializer != nil {
 			analyzeStatement(stmt.For.Initializer, tokens, uri)
 		}
@@ -453,7 +450,6 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 	} else if stmt.Expression != nil {
 		analyzeExpression(stmt.Expression, tokens)
 	} else if stmt.While != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.While.KWWhile.Pos.Line) - 1, uint(stmt.While.KWWhile.Pos.Column) - 1, 5, 19, 0}...)
 		for _, s := range stmt.While.Body {
 			analyzeStatement(s, tokens, uri)
 		}
@@ -509,32 +505,32 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 				// Check if the export statement has a function.
 				if importedStmt.Export.FunctionDefinition != nil {
 					symbol = CTSymbol{
-						Name: importedStmt.Export.FunctionDefinition.Name.Name,
+						Name: importedStmt.Export.FunctionDefinition.Name.Name.Value,
 						Type: "function",
 						Data: map[string]string{
-							"location": fmt.Sprintf("%s#L%d", importPath, importedStmt.Export.FunctionDefinition.Name.Pos.Line),
-							"definition": "func " + importedStmt.Export.FunctionDefinition.Name.Name + "(" + strings.Join(func() []string {
+							"location": fmt.Sprintf("%s#L%d", importPath, importedStmt.Export.FunctionDefinition.Name.Name.Pos.Line),
+							"definition": "func " + importedStmt.Export.FunctionDefinition.Name.Name.Value + "(" + strings.Join(func() []string {
 								var s []string
 								for _, p := range importedStmt.Export.FunctionDefinition.Parameters {
-									s = append(s, p.Name.Name+": "+p.Type.Type)
+									s = append(s, p.Name.Value+": "+p.Type.Value)
 								}
 								return s
-							}(), ", ") + "): " + importedStmt.Export.FunctionDefinition.ReturnType.Type,
+							}(), ", ") + "): " + importedStmt.Export.FunctionDefinition.ReturnType.Value,
 						},
 					}
-				} else if importedStmt.Export.External.Function != nil {
+				} else if importedStmt.Export.External != nil {
 					symbol = CTSymbol{
-						Name: importedStmt.Export.External.Function.Name.Name,
+						Name: importedStmt.Export.External.Name.Value,
 						Type: "function",
 						Data: map[string]string{
-							"location": fmt.Sprintf("%s#L%d", importPath, importedStmt.Export.External.Function.Name.Pos.Line),
-							"definition": "extern func " + importedStmt.Export.External.Function.Name.Name + "(" + strings.Join(func() []string {
+							"location": fmt.Sprintf("%s#L%d", importPath, importedStmt.Export.External.Name.Pos.Line),
+							"definition": "extern func " + importedStmt.Export.External.Name.Value + "(" + strings.Join(func() []string {
 								var s []string
-								for _, p := range importedStmt.Export.External.Function.Parameters {
-									s = append(s, p.Name.Name+": "+p.Type.Type)
+								for _, p := range importedStmt.Export.External.Parameters {
+									s = append(s, p.Name.Value+": "+p.Type.Value)
 								}
 								return s
-							}(), ", ") + "): " + importedStmt.Export.External.Function.ReturnType.Type,
+							}(), ", ") + "): " + importedStmt.Export.External.ReturnType.Value,
 						},
 					}
 				}
@@ -542,24 +538,23 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 			}
 		}
 	} else if stmt.Return != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.Return.KWReturn.Pos.Line) - 1, uint(stmt.Return.KWReturn.Pos.Column) - 1, 6, 19, 0}...)
 		analyzeExpression(stmt.Return.Expression, tokens)
 	} else if stmt.Break != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.Pos.Line) - 1, uint(stmt.Pos.Column) - 1, 5, 19, 0}...)
 	} else if stmt.Continue != nil {
 		tokens.Data = append(tokens.Data, []uint{uint(stmt.Pos.Line) - 1, uint(stmt.Pos.Column) - 1, 8, 19, 0}...)
 	} else if stmt.FieldDefinition != nil {
-		SymbolTable[stmt.FieldDefinition.Name.Name] = CTSymbol{
-			Name: stmt.FieldDefinition.Name.Name,
+		SymbolTable[stmt.FieldDefinition.Name.Value] = CTSymbol{
+			Name: stmt.FieldDefinition.Name.Value,
 			Type: "field",
 			Data: map[string]string{
-				"type":        stmt.FieldDefinition.Type.Type,
+				"type":        stmt.FieldDefinition.Type.Value,
 				"VLocation":   fmt.Sprintf("%s#L%d", uri, stmt.FieldDefinition.Name.Pos.Line),
-				"VDefinition": stmt.FieldDefinition.Name.Name + ": " + stmt.FieldDefinition.Type.Type,
+				"VDefinition": stmt.FieldDefinition.Name.Value + ": " + stmt.FieldDefinition.Type.Value,
 			},
 		}
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Name.Pos.Line) - 1, uint(stmt.FieldDefinition.Name.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Name.Name)), 8, 0b10}...)
-		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Type.Pos.Line) - 1, uint(stmt.FieldDefinition.Type.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Type.Type)), 5, 0}...)
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Name.Pos.Line) - 1, uint(stmt.FieldDefinition.Name.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Name.Value)), 8, 0b10}...)
+		tokens.Data = append(tokens.Data, []uint{uint(stmt.FieldDefinition.Type.Pos.Line) - 1, uint(stmt.FieldDefinition.Type.Pos.Column) - 1, uint(len(stmt.FieldDefinition.Type.Value)), 5, 0}...)
 	} else if stmt.Export != nil {
 		analyzeStatement(stmt.Export, tokens, uri)
 	}
@@ -568,7 +563,7 @@ func analyzeStatement(stmt *Statement, tokens *lsp.SemanticTokens, uri lsp.Docum
 func analyzeExpression(expr *Expression, tokens *lsp.SemanticTokens) {
 	analyzeComparison(expr.Left, tokens)
 	for _, op := range expr.Right {
-		tokens.Data = append(tokens.Data, []uint{uint(op.Op.Pos.Line) - 1, uint(op.Op.Pos.Column) - 1, uint(len(op.Op.Op)), 22, 0}...)
+		tokens.Data = append(tokens.Data, []uint{uint(op.Op.Pos.Line) - 1, uint(op.Op.Pos.Column) - 1, uint(len(op.Op.Value)), 22, 0}...)
 		analyzeComparison(op.Expression, tokens)
 	}
 }
@@ -576,7 +571,7 @@ func analyzeExpression(expr *Expression, tokens *lsp.SemanticTokens) {
 func analyzeComparison(comp *Comparison, tokens *lsp.SemanticTokens) {
 	analyzeTerm(comp.Left, tokens)
 	for _, op := range comp.Right {
-		tokens.Data = append(tokens.Data, []uint{uint(op.Op.Pos.Line) - 1, uint(op.Op.Pos.Column) - 1, uint(len(op.Op.Op)), 22, 0}...)
+		tokens.Data = append(tokens.Data, []uint{uint(op.Op.Pos.Line) - 1, uint(op.Op.Pos.Column) - 1, uint(len(op.Op.Value)), 22, 0}...)
 		analyzeTerm(op.Comparison, tokens)
 	}
 }
@@ -584,7 +579,7 @@ func analyzeComparison(comp *Comparison, tokens *lsp.SemanticTokens) {
 func analyzeTerm(term *Term, tokens *lsp.SemanticTokens) {
 	analyzeFactor(term.Left, tokens)
 	for _, op := range term.Right {
-		tokens.Data = append(tokens.Data, []uint{uint(op.Op.Pos.Line) - 1, uint(op.Op.Pos.Column) - 1, uint(len(op.Op.Op)), 22, 0}...)
+		tokens.Data = append(tokens.Data, []uint{uint(op.Op.Pos.Line) - 1, uint(op.Op.Pos.Column) - 1, uint(len(op.Op.Value)), 22, 0}...)
 		analyzeFactor(op.Term, tokens)
 	}
 }
@@ -592,9 +587,7 @@ func analyzeTerm(term *Term, tokens *lsp.SemanticTokens) {
 func analyzeFactor(fact *Factor, tokens *lsp.SemanticTokens) {
 	if fact.Value != nil {
 		val := fact.Value
-		if val.Bool != nil {
-			tokens.Data = append(tokens.Data, []uint{uint(val.Pos.Line) - 1, uint(val.Pos.Column) - 1, uint(len(val.Bool.Str)), 6, 0}...)
-		} else if val.Duration != nil {
+		if val.Duration != nil {
 			tokens.Data = append(tokens.Data, []uint{uint(val.Duration.Pos.Line) - 1, uint(val.Duration.Pos.Column) - 1, uint(len(fmt.Sprint(val.Duration.Number))), 20, 0}...)
 			tokens.Data = append(tokens.Data, []uint{uint(val.Duration.Pos.Line - 1 + len(fmt.Sprint(val.Duration.Number))), uint(val.Duration.Pos.Column) - 1, uint(len(fmt.Sprint(val.Duration.Unit))), 6, 0}...)
 		} else if val.Float != nil {
@@ -607,8 +600,7 @@ func analyzeFactor(fact *Factor, tokens *lsp.SemanticTokens) {
 	} else if fact.Identifier != nil {
 		analyzeIdentifier(fact.Identifier, tokens)
 	} else if fact.ClassInitializer != nil {
-		tokens.Data = append(tokens.Data, []uint{uint(fact.ClassInitializer.New.Pos.Line) - 1, uint(fact.ClassInitializer.New.Pos.Column) - 1, 3, 19, 0}...)
-		tokens.Data = append(tokens.Data, []uint{uint(fact.ClassInitializer.ClassName.Pos.Line) - 1, uint(fact.ClassInitializer.ClassName.Pos.Column) - 1, uint(len(fact.ClassInitializer.ClassName.Name)), 1, 0}...)
+		tokens.Data = append(tokens.Data, []uint{uint(fact.ClassInitializer.ClassName.Pos.Line) - 1, uint(fact.ClassInitializer.ClassName.Pos.Column) - 1, uint(len(fact.ClassInitializer.ClassName.Value)), 1, 0}...)
 		for _, e := range fact.ClassInitializer.Args.Arguments {
 			analyzeExpression(e, tokens)
 		}

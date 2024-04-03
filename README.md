@@ -18,5 +18,5 @@ This extension adds support for the CaffeineC programming language in vscode.
 
 ## Release Notes
 
-### 1.0.12
-- Fix grammar
+### 1.0.13
+- Synchronize grammar with main CaffeineC grammar
